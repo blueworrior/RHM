@@ -1,0 +1,119 @@
+🔁 Full Backend Flow (Simple & Clear)
+React Frontend
+      ↓
+Express Server (server.js)
+      ↓
+Routes (/api/auth)
+      ↓
+Controllers
+      ↓
+MySQL Database
+
+
+🔄 Full Example (Login Flow)
+Step-by-step:
+1️⃣ User clicks Login
+2️⃣ React sends request
+3️⃣ Express receives it
+4️⃣ Route matches /login
+5️⃣ Controller checks credentials
+6️⃣ MySQL returns user data
+7️⃣ Controller sends success or error
+8️⃣ React shows result
+
+
+STEPS IN DETAIL:
+1️⃣ React Frontend (Customer)
+📌 What it is:
+    The UI (forms, buttons, pages)
+    Where user:
+    Types email/password
+    Clicks Login / Submit
+
+📌 Example:
+    User clicks Login button.
+    React sends data:
+    {
+    "email": "student@gmail.com",
+    "password": "123456"
+    }
+
+React sends this to:
+    http://localhost:5000/api/auth/login
+    👉 React does NOT talk to database directly ❌
+
+2️⃣ Express Server (server.js) — The Gate
+📌 What it does:
+    Listens for requests
+    Accepts requests from frontend
+    Decides where to send them
+
+    Example:
+    app.use('/api/auth', require('./routes/auth'));
+
+    Meaning:
+    “Any request starting with /api/auth
+    send it to routes/auth.js”
+
+3️⃣ Routes (/api/auth) — The Reception Desk
+📌 What routes do:
+    Match URL + HTTP method
+    Decide which function to call
+    Example (routes/auth.js):
+    router.post('/login', loginUser);
+
+    This means:
+    POST /api/auth/login → loginUser()
+
+    Routes DO NOT:
+        Write SQL
+        Contain business logic
+        They just forward the request.
+
+4️⃣ Controllers — The Brain 🧠
+📌 What controllers do:
+    Contain actual logic
+    Validate data
+    Talk to database
+    Decide response
+    Example (controllers/authController.js):
+    exports.loginUser = (req, res) => {
+        const { email, password } = req.body;
+
+        // 1. Check email exists
+        // 2. Compare password
+        // 3. Generate token
+        // 4. Send response
+    };
+
+    Controllers:
+    ✔ Understand request
+    ✔ Talk to DB
+    ✔ Prepare response
+
+5️⃣ MySQL Database — The Storage Room 🗄️
+📌 What database does:
+    Stores data permanently
+    Users
+    Students
+    Proposals
+    Approvals
+    Controller sends SQL:
+        SELECT * FROM users WHERE email = ?        
+        Database returns data to controller.
+
+
+
+TABLE:
+| System Part | Real Life  |
+| ----------- | ---------- |
+| React       | Customer   |
+| Express     | Main gate  |
+| Routes      | Reception  |
+| Controller  | Manager    |
+| Database    | Store room |
+
+
+
+🏁 Exam-Ready Definition
+In a full-stack application, the frontend sends requests to the Express server, which routes them to controllers. Controllers process the request, interact with the MySQL database, and return a response back to the frontend.

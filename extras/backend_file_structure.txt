@@ -1,0 +1,43 @@
+FILE STRUCTURE
+
+backend/
+│
+├── config/
+│   └── db.js
+│
+├── controllers/
+│   ├── authController.js          # DONE - login, JWT
+│   ├── adminController.js        # NEXT - admin operations
+│   ├── coordinatorController.js  # LATER
+│   ├── supervisorController.js   # LATER
+│   ├── studentController.js      # LATER
+│   ├── examinerController.js     # LATER
+│   ├── proposalController.js     # LATER
+│   ├── progressController.js     # LATER
+│   ├── thesisController.js       # LATER
+│
+├── middleware/
+│   ├── authMiddleware.js         # DONE - JWT verify
+│   ├── roleMiddleware.js         # NEXT - role based access
+│   ├── uploadMiddleware.js       # LATER - PDF upload
+│
+├── routes/
+│   ├── auth.js                  # DONE
+│   ├── admin.js                # NEXT
+│   ├── coordinator.js          # LATER
+│   ├── supervisor.js           # LATER
+│   ├── student.js              # LATER
+│   ├── examiner.js             # LATER
+│   ├── proposal.js             # LATER
+│   ├── progress.js             # LATER
+│   ├── thesis.js               # LATER
+│
+├── uploads/
+│   ├── proposals/
+│   ├── reports/
+│   └── thesis/
+│
+├── .env
+├── server.js
+├── package.json
+└── node_modules/
