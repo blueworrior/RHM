@@ -358,6 +358,7 @@ exports.deleteStudent = (req, res) => {
             db.query(deletesql, [student_user_id], (err) => {
                 if (err) return res.status(500).json({ message: "Server Error3" });
 
+                // deleted Successfully
                 res.json({ message: "Student and user deleted successfully" });
             });
         });
