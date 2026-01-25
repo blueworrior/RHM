@@ -12,7 +12,8 @@ app.use('/uploads', express.static('uploads')); //serve PDFs
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/coordinator',require('./routes/coordinate'));
-
+app.use('/api/student',require('./routes/student'));
+app.use('/uploads', express.static('uploads'));
 
 
 app.listen(PORT, ()=> console.log(`Server running on PORT ${5000}`));
