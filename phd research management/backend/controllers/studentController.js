@@ -43,7 +43,7 @@ exports.submitProposal = (req, res) => {
                 `;
 
                 db.query(insertsql, [student_id, title, file_path], (err, result) => {
-                if(err) return res.status(500).json({ message: "Server Error3", error: err });
+                if(err) return res.status(500).json({ message: "Server Error3" });
 
                 res.status(201).json({ 
                     message: "Proposal Submit Successfully",
@@ -59,7 +59,7 @@ exports.getMyProposals = (req, res) => {
     const user_id = req.user.id;
     
     db.query(stdsql, [user_id], (err, result) => {
-        if(err) return res.status(500).json({ message: "Server Error" });
+        if(err) return res.status(500).json({ message: "Server Error1" });
         
         if(result.length === 0) return res.status(409).json({ message: "Not a Student" });
 
@@ -77,9 +77,53 @@ exports.getMyProposals = (req, res) => {
         `;
 
         db.query(checksql,[student_id], (err, result) => {
-            if(err) return res.status(500).json({ message: "Server Error" });
+            if(err) return res.status(500).json({ message: "Server Error2" });
 
             res.json(result);
+        });
+    });
+};
+
+// 3. View proposals
+exports.getMyProposalStatus = (req, res) => {
+    const user_id = req.user.id;
+
+    // get student id
+    db.query(stdsql, [user_id], (err, result) => {
+        if(err) return res.status(400).json({ message: "Server Error1" });
+        
+        if(result.length === 0)
+            return res.status(403).json({ message: "Not a student" });
+        
+        const student_id = result[0].id;
+        
+        const sql = `
+            SELECT
+                p.id AS proposal_id,
+                p.title,
+                p.status,
+                p.submitted_at,
+                a.status AS decision_status,
+                a.remarks,
+                a.approved_at
+            FROM proposals p
+            LEFT JOIN approvals a 
+                ON a.reference_type = 'proposal'
+                AND a.reference_id = p.id
+                AND a.id = (
+                    SELECT MAX(id)
+                    FROM approvals
+                    WHERE reference_type = 'proposal'
+                    AND reference_id = p.id
+                )
+            WHERE p.student_id = ?
+            ORDER BY p.submitted_at DESC
+        `;
+            
+            db.query(sql, [student_id], (err, rows) => {
+                if(err) return res.status(400).json({ message: "Server Error2" });
+                
+                res.json(rows);
         });
     });
 };

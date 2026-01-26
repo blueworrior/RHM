@@ -13,6 +13,8 @@ router.post('/proposals', auth, role(['student']), uploadProposal.single('propos
 // List propsal
 router.get('/proposals', auth, role(['student']), studentController.getMyProposals);
 
+// view proposal status + remarks
+router.get('/proposals/status', auth, role(['student']), studentController.getMyProposalStatus);
 
 
 module.exports = router;
