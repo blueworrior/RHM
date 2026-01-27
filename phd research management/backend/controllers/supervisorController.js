@@ -218,3 +218,41 @@ exports.decideProgressReport = (req, res) => {
         });
     });
 };
+
+// PUBLICATIONS
+// View my students publication
+exports.getMyStudentPublications = (req, res) => {
+    const user_id = req.user.id;
+
+    // get supervisor id
+    db.query(supsql, [user_id], (err, result) => {
+        if (err) return res.status(500).json({ message: "Server Error1" });
+
+        if (result.length === 0)
+            return res.status(403).json({ message: "Not a supervisor" });
+
+        const supervisor_id = result[0].id;
+
+        const sql = `
+            SELECT
+                p.id AS publication_id,
+                p.title,
+                p.journal_name,
+                p.year,
+                p.type,
+                s.registration_no,
+                CONCAT(u.first_name,' ',u.last_name) AS student_name
+            FROM publications p
+            JOIN students s ON p.student_id = s.id
+            JOIN users u ON s.user_id = u.id
+            WHERE s.supervisor_id = ?
+            ORDER BY p.year DESC
+        `;
+
+         db.query(sql, [supervisor_id], (err, rows) => {
+            if (err) return res.status(500).json({ message: "Server Error2" });
+
+            res.json(rows);
+        });
+    });
+}

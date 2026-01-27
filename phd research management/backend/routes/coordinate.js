@@ -6,29 +6,26 @@ const role = require('../middleware/roleMiddleware');
 
 const coordinatorController = require('../controllers/coordinatorController');
 
-// create sttudent
+// STUDENTS
+// -> 1. create sttudent
 router.post('/students', auth, role(['coordinator']), coordinatorController.createStudent);
-
-// assign supervisor to student
+// -> 2. assign supervisor to student
 router.put('/assign-supervisor', auth, role(['coordinator']), coordinatorController.assignSupervisor);
-
-// list supervisors of my department
+// -> 3. list supervisors of my department
 router.get('/my-supervisors', auth, role(['coordinator']), coordinatorController.getMyDepartmentSupervisors);
-
-// list students of my department
+// -> 4. list students of my department
 router.get('/my-students', auth, role(['coordinator']), coordinatorController.getMyDepartmentStudents);
-
-// list students without supervisor
+// -> 5. list students without supervisor
 router.get('/unassigned-students', auth, role(['coordinator']), coordinatorController.getUnassignedStudents);
-
-// remove supervisor
+// -> 6. remove supervisor
 router.put('/remove-supervisor', auth, role(['coordinator']), coordinatorController.removeSupervisor);
-
-// update student
+// -> 7. update student
 router.put('/students', auth, role(['coordinator']), coordinatorController.updateStudent);
-
-// delete student
+// -> 8. delete student
 router.delete('/students/:student_id', auth, role(['coordinator']), coordinatorController.deleteStudent);
+
+// PUBLICATION (list all my department student )
+router.get('/publications', auth, role(['coordinator']), coordinatorController.getDepartmentPublications);
 
 
 module.exports = router;

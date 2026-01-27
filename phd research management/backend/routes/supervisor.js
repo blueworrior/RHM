@@ -21,5 +21,9 @@ router.get('/progress-reports', auth, role(['supervisor']), supervisorProposal.g
 // -> 2. Approve/ Reject Progress Report
 router.put('/progress-reports/:id/decision', auth, role(['supervisor']), supervisorProposal.decideProgressReport);
 
+//PUblication (list my students publication)
+router.get('/publications', auth, role(['supervisor']), supervisorProposal.getMyStudentPublications);
+
+
 
 module.exports = router;

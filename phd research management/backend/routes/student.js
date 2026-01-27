@@ -18,10 +18,8 @@ router.post(
     uploadProposal.single('proposal_file'), 
     studentController.submitProposal
 );
-
 // -> 2. List propsal
 router.get('/proposals', auth, role(['student']), studentController.getMyProposals);
-
 // -> 3. view proposal status + remarks
 router.get('/proposals/status', auth, role(['student']), studentController.getMyProposalStatus);
 
@@ -35,8 +33,15 @@ router.post(
     uploadProgress.single('report_file'),
     studentController.submitProgressReport
 );
-
 // -> 2. List Progress Report
 router.get('/progress-reports', auth, role(['student']), studentController.getMyProgressReport);
+
+
+// Publication
+// -> 1. Add publication
+router.post('/publications', auth, role(['student']), studentController.addPublication);
+// -> 2. List publication
+router.get('/publications', auth, role(['student']), studentController.getMypublication);
+
 
 module.exports = router;

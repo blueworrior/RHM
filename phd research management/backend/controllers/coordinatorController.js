@@ -8,8 +8,8 @@ const checksql = 'SELECT id FROM users WHERE email = ?';
 const usersql = `INSERT INTO users (role_id, first_name, last_name, email, password)
 VALUES (?, ?, ?, ?, ?)`;
 
-
-// 1. create Students
+// STUDENTS
+// -> 1. create Students
 exports.createStudent = (req, res) => {
     const {
         first_name,
@@ -79,7 +79,7 @@ exports.createStudent = (req, res) => {
     });
 };
 
-// 2. Assign supervisor to students
+// -> 2. Assign supervisor to students
 exports.assignSupervisor = (req, res) => {
     const { student_id, supervisor_id } = req.body;
 
@@ -121,7 +121,7 @@ exports.assignSupervisor = (req, res) => {
     });
 };
 
-// 3. List Supervisor of Coordinator Department
+// -> 3. List Supervisor of Coordinator Department
 exports.getMyDepartmentSupervisors = (req, res) => {
     
     const user_id = req.user.id;
@@ -157,7 +157,7 @@ exports.getMyDepartmentSupervisors = (req, res) => {
 };
 
 
-// 4. List Students of Coordinator Department
+// -> 4. List Students of Coordinator Department
 exports.getMyDepartmentStudents = (req, res) => {
     
     const user_id = req.user.id;
@@ -202,7 +202,7 @@ exports.getMyDepartmentStudents = (req, res) => {
     });
 };
 
-// 5. List students without supervisor (my department)
+// -> 5. List students without supervisor (my department)
 exports.getUnassignedStudents = (req, res) => {
 
     const user_id = req.user.id;
@@ -242,7 +242,7 @@ exports.getUnassignedStudents = (req, res) => {
     });
 };
 
-// 6. Change / Remove supervisor from student
+// -> 6. Change / Remove supervisor from student
 exports.removeSupervisor = (req, res) => {
 
     const { student_id } = req.body;
@@ -268,7 +268,7 @@ exports.removeSupervisor = (req, res) => {
     });
 };
 
-// 7. Update student info
+// -> 7. Update student info
 // Update student (only in coordinator's department)
 exports.updateStudent = (req, res) => {
 
@@ -316,7 +316,7 @@ exports.updateStudent = (req, res) => {
 };
 
 
-// 8. Delete student
+// -> 8. Delete student
 // Delete student (delete both student + user safely)
 exports.deleteStudent = (req, res) => {
 
@@ -365,3 +365,42 @@ exports.deleteStudent = (req, res) => {
     });
 };
 
+// -> View department publications
+exports.getDepartmentPublications = (req, res) => {
+
+    const user_id = req.user.id;
+
+    // get coordinator dept
+    const deptsql = `SELECT dept_id FROM coordinators WHERE user_id = ?`;
+
+    db.query(deptsql, [user_id], (err, result) => {
+        if (err) return res.status(500).json({ message: "Server Error1" });
+
+        if (result.length === 0)
+            return res.status(403).json({ message: "Not a coordinator" });
+
+        const dept_id = result[0].dept_id;
+
+        const sql = `
+            SELECT
+                p.id AS publication_id,
+                p.title,
+                p.journal_name,
+                p.year,
+                p.type,
+                s.registration_no,
+                CONCAT(u.first_name, ' ', u.last_name) AS student_name
+            FROM publications p
+            JOIN students s ON p.student_id = s.id
+            JOIN users u ON s.user_id = u.id
+            where s.dept_id = ?
+            ORDER BY p.year DESC
+        `;
+
+        db.query(sql, [dept_id], (err, rows) => {
+            if (err) return res.status(500).json({ message: "Server Error2" });
+
+            res.json(rows);
+        });
+    });
+}
