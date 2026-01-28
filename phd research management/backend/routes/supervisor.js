@@ -15,7 +15,7 @@ router.put('/proposals/:id/decision', auth, role(['supervisor']), supervisorProp
 
 
 // PROGRESS REPORTS
-// -> 1. List student progress REports
+// -> 1. List my student progress REports
 router.get('/progress-reports', auth, role(['supervisor']), supervisorProposal.getStudentProgressReports);
 
 // -> 2. Approve/ Reject Progress Report
@@ -24,6 +24,13 @@ router.put('/progress-reports/:id/decision', auth, role(['supervisor']), supervi
 //PUblication (list my students publication)
 router.get('/publications', auth, role(['supervisor']), supervisorProposal.getMyStudentPublications);
 
+
+// Thesis
+// -> 1. List my student Thesis
+router.get('/thesis', auth, role(['supervisor']), supervisorProposal.getMyStudentThesis);
+
+// -> 2. Approve/ Reject thesis
+router.put('/thesis/:id/decision', auth, role(['supervisor']), supervisorProposal.decideThesis);
 
 
 module.exports = router;

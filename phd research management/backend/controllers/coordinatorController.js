@@ -8,6 +8,9 @@ const checksql = 'SELECT id FROM users WHERE email = ?';
 const usersql = `INSERT INTO users (role_id, first_name, last_name, email, password)
 VALUES (?, ?, ?, ?, ?)`;
 
+// get dept_id
+const deptsql = `SELECT dept_id FROM coordinators WHERE user_id = ?`;
+
 // STUDENTS
 // -> 1. create Students
 exports.createStudent = (req, res) => {
@@ -30,52 +33,52 @@ exports.createStudent = (req, res) => {
     db.query(checksql, [email], (err, result) => {
         if (err) return res.status(500).json({ message: "Server Error1" });
         if (result.length > 0) return res.status(409).json({ message: "Email already exists" });
-        
+
         //check if student with same registration exist
         const regsql = 'SELECT id FROM students where registration_no = ?';
-        
-        db.query(regsql,[registration_no], async (err, result) => {
+
+        db.query(regsql, [registration_no], async (err, result) => {
             if (err) return res.status(500).json({ message: "Server Error1" });
             if (result.length > 0) return res.status(409).json({ message: "Registration number already exists" });
-            
+
             try {
                 //hashing pass
                 const hashPass = await bcrypt.hash(password, 10);
-                
-                // create user
-            db.query(usersql, [4, first_name, last_name, email, hashPass], (err, userResult) => {
-                if (err) return res.status(500).json({ message: "Server Error2" });
 
-                //getting user id
-                const user_id = userResult.insertId;
-                
-                const studentsql = `INSERT INTO students
+                // create user
+                db.query(usersql, [4, first_name, last_name, email, hashPass], (err, userResult) => {
+                    if (err) return res.status(500).json({ message: "Server Error2" });
+
+                    //getting user id
+                    const user_id = userResult.insertId;
+
+                    const studentsql = `INSERT INTO students
                 (user_id, dept_id, registration_no, research_area, enrollment_date)
                 VALUES (?, ?, ?, ?, ?)`;
 
-                db.query(studentsql, [user_id, dept_id, registration_no, research_area, enrollment_date], (err) => {
-                    if (err) {
-                        // ROLLBACK: delete created user
-                        const deletesql = `DELETE FROM users WHERE id = ?`;
-                        
-                        db.query(deletesql, [user_id], () => {
-                            return res.status(500).json({ message: "Server Error3" });
-                        });
-                        return;
-                    }
+                    db.query(studentsql, [user_id, dept_id, registration_no, research_area, enrollment_date], (err) => {
+                        if (err) {
+                            // ROLLBACK: delete created user
+                            const deletesql = `DELETE FROM users WHERE id = ?`;
 
-                    res.status(201).json({
-                        message: "Student added",
-                        user_id: user_id
+                            db.query(deletesql, [user_id], () => {
+                                return res.status(500).json({ message: "Server Error3" });
+                            });
+                            return;
+                        }
+
+                        res.status(201).json({
+                            message: "Student added",
+                            user_id: user_id
+                        });
+
                     });
-                    
                 });
-            });
-        } catch (error) {
-            console.error(error);
-            res.status(500).json({ message: "Server Error" });
-        }
-    });
+            } catch (error) {
+                console.error(error);
+                res.status(500).json({ message: "Server Error" });
+            }
+        });
     });
 };
 
@@ -123,18 +126,16 @@ exports.assignSupervisor = (req, res) => {
 
 // -> 3. List Supervisor of Coordinator Department
 exports.getMyDepartmentSupervisors = (req, res) => {
-    
+
     const user_id = req.user.id;
-    
-    const deptsql = `SELECT dept_id from coordinators where user_id = ?`;
 
     db.query(deptsql, [user_id], (err, result) => {
-        if(err) return res.status(500).json({ message: "Server Error1" });
-        
-        if(result.length === 0) return res.status(403).json({ message: "Not a coordinator" });
-        
+        if (err) return res.status(500).json({ message: "Server Error1" });
+
+        if (result.length === 0) return res.status(403).json({ message: "Not a coordinator" });
+
         const dept_id = result[0].dept_id;
-        
+
         const sql = `
         SELECT
         s.id AS supervisor_id,
@@ -147,10 +148,10 @@ exports.getMyDepartmentSupervisors = (req, res) => {
         WHERE s.dept_id = ?
         ORDER BY u.first_name
         `;
-        
+
         db.query(sql, [dept_id], (err, result) => {
-            if(err) return res.status(500).json({ message: "Server Error1" });
-            
+            if (err) return res.status(500).json({ message: "Server Error1" });
+
             res.json(result);
         });
     });
@@ -159,16 +160,15 @@ exports.getMyDepartmentSupervisors = (req, res) => {
 
 // -> 4. List Students of Coordinator Department
 exports.getMyDepartmentStudents = (req, res) => {
-    
+
     const user_id = req.user.id;
 
-    const deptsql = `SELECT dept_id from coordinators where user_id = ?`;
-
+    // find coordinator department
     db.query(deptsql, [user_id], (err, result) => {
-        if(err) return res.status(500).json({ message: "Server Error1" });
-        
-        if(result.length === 0) return res.status(403).json({ message: "Not a coordinator" });
-    
+        if (err) return res.status(500).json({ message: "Server Error1" });
+
+        if (result.length === 0) return res.status(403).json({ message: "Not a coordinator" });
+
         const dept_id = result[0].dept_id;
 
         const sql = `
@@ -195,7 +195,7 @@ exports.getMyDepartmentStudents = (req, res) => {
         `;
 
         db.query(sql, [dept_id], (err, result) => {
-            if(err) return res.status(500).json({ message: "Server Error1" });
+            if (err) return res.status(500).json({ message: "Server Error1" });
 
             res.json(result);
         });
@@ -206,8 +206,6 @@ exports.getMyDepartmentStudents = (req, res) => {
 exports.getUnassignedStudents = (req, res) => {
 
     const user_id = req.user.id;
-
-    const deptsql = `SELECT dept_id FROM coordinators WHERE user_id = ?`;
 
     db.query(deptsql, [user_id], (err, result) => {
         if (err) return res.status(500).json({ message: "Server Error1" });
@@ -280,8 +278,6 @@ exports.updateStudent = (req, res) => {
     }
 
     // find coordinator department
-    const deptsql = `SELECT dept_id FROM coordinators WHERE user_id = ?`;
-
     db.query(deptsql, [user_id], (err, result) => {
         if (err) return res.status(500).json({ message: "Server Error1" });
 
@@ -324,8 +320,6 @@ exports.deleteStudent = (req, res) => {
     const user_id = req.user.id;
 
     // 1. Find coordinator department
-    const deptsql = `SELECT dept_id FROM coordinators WHERE user_id = ?`;
-
     db.query(deptsql, [user_id], (err, result) => {
         if (err) return res.status(500).json({ message: "Server Error1" });
 
@@ -365,13 +359,12 @@ exports.deleteStudent = (req, res) => {
     });
 };
 
-// -> View department publications
+// 9. View department publications
 exports.getDepartmentPublications = (req, res) => {
 
     const user_id = req.user.id;
 
     // get coordinator dept
-    const deptsql = `SELECT dept_id FROM coordinators WHERE user_id = ?`;
 
     db.query(deptsql, [user_id], (err, result) => {
         if (err) return res.status(500).json({ message: "Server Error1" });
@@ -404,3 +397,99 @@ exports.getDepartmentPublications = (req, res) => {
         });
     });
 }
+
+// 10. Assign examiner to thesis
+exports.assignExaminer = (req, res) => {
+    const user_id = req.user.id;
+    const { thesis_id, examiner_id } = req.body;
+
+    if (!thesis_id || !examiner_id) {
+        return res.status(400).json({ message: "Thesis ID and Examiner ID are required" });
+    }
+
+    // find coordinator department
+    db.query(deptsql, [user_id], (err, result) => {
+        if (err) return res.status(500).json({ message: "Server Error1" });
+        if (result.length === 0)
+            return res.status(403).json({ message: "Not a coordinator" });
+
+        const dept_id = result[0].dept_id;
+
+        // check thesis
+        const thesisSql = `
+            SELECT t.id
+            FROM thesis t
+            JOIN students s ON t.student_id = s.id
+            WHERE t.id = ?
+              AND s.dept_id = ?
+              AND t.status = 'Approved'
+        `;
+
+        db.query(thesisSql, [thesis_id, dept_id], (err, rows) => {
+            if (err) return res.status(500).json({ message: "Server Error2" });
+            if (rows.length === 0)
+                return res.status(409).json({
+                    message: "Thesis not approved or not in your department"
+                });
+
+            // check examiner
+            const examinerSql = `
+                SELECT id FROM examiners
+                WHERE id = ? AND dept_id = ?
+            `;
+
+            db.query(examinerSql, [examiner_id, dept_id], (err, rows) => {
+                if (err) return res.status(500).json({ message: "Server Error3" });
+                if (rows.length === 0)
+                    return res.status(409).json({
+                        message: "Examiner not in your department"
+                    });
+
+                // prevent duplicate
+                const checkSql = `
+                    SELECT id FROM examiner_assignments
+                    WHERE thesis_id = ?
+                `;
+
+                db.query(checkSql, [thesis_id], (err, rows) => {
+                    if (err) return res.status(500).json({ message: "Server Error4" });
+                    if (rows.length > 0)
+                        return res.status(409).json({
+                            message: "Examiner already assigned"
+                        });
+
+                    // assign examiner
+                    const insertSql = `
+                        INSERT INTO examiner_assignments (thesis_id, examiner_id)
+                        VALUES (?, ?)
+                    `;
+
+                    db.query(insertSql, [thesis_id, examiner_id], (err) => {
+                        if (err) return res.status(500).json({ message: "Server Error5" });
+
+                        // update thesis status
+                        const statussql = `
+                            UPDATE thesis
+                            SET status = 'Under_Examination'
+                            WHERE id = ? AND status = 'Approved'
+                        `;
+
+                        db.query(statussql, [thesis_id], (err) => {
+                            if (err) {
+                                // rollback assignment
+                                db.query(
+                                    'DELETE FROM examiner_assignments WHERE thesis_id = ?',
+                                    [thesis_id]
+                                );
+                                return res.status(500).json({ message: "Server Error6" });
+                            }
+
+                            res.json({ message: "Examiner assigned successfully" });
+                        });
+                    });
+                });
+            });
+        });
+    });
+};
+

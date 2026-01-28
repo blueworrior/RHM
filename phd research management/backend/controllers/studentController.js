@@ -1,5 +1,6 @@
 const db = require('../config/db');
 
+// get student id query
 const stdsql = 'SELECT id FROM students where user_id = ?';
 
 // PROPOSALS
@@ -288,6 +289,78 @@ exports.getMypublication = (req, res) => {
             if (err) return res.status(500).json({ message: "Server Error2" });
 
             res.json(rows);
+        });
+    });
+};
+
+// THESIS
+// -> 1. Submit Thesis
+exports.submitThesis = (req, res) => {
+    const user_id = req.user.id;
+    const { title } = req.body;
+
+    if (!title) return res.status(400).json({ message: "Title is required" });
+
+    if (!req.file) return res.status(400).json({ message: "Thesis file is required" });
+
+    const file_path = 'uploads/thesis/' + req.file.filename;
+
+    // get student id
+    db.query(stdsql, [user_id], (err, result) => {
+        if (err) return res.status(500).json({ message: "Server Error1" });
+        if (result.length === 0) return res.status(403).json({ message: "Not a student" });
+
+        const student_id = result[0].id;
+
+        // check already submitted
+        const checksql = `SELECT id FROM thesis WHERE student_id = ?`;
+
+        db.query(checksql, [student_id], (err, rows) => {
+            if (err) return res.status(500).json({ message: "Server Error2" });
+
+            if (rows.length > 0)
+                return res.status(409).json({ message: "Thesis already submitted" });
+
+            // insert thesis
+            const insertsql = `
+                INSERT INTO thesis (student_id, title, file_path)
+                VALUES (?, ?, ?)
+            `;
+
+            db.query(insertsql, [student_id, title, file_path], (err, result) => {
+                if (err) return res.status(500).json({ message: "Server Error3" });
+
+                res.status(201).json({
+                    message: "Thesis submitted successfully",
+                    thesis_id: result.insertId
+                });
+            });
+        });
+    });
+};
+
+// -> 2. List Thesis
+exports.getMyThesis = (req, res) => {
+    const user_id = req.user.id;
+
+    // get student id
+    db.query(stdsql, [user_id], (err, result) => {
+        if (err) return res.status(500).json({ message: "Server Error1" });
+        if (result.length === 0) return res.status(403).json({ message: "Not a student" });
+
+        const student_id = result[0].id;
+
+        const sql = `
+            SELECT t.id, t.title, t.file_path, t.status, a.remarks, t.submitted_at
+            FROM thesis t
+            JOIN approvals a ON t.id = a.reference_id
+            WHERE student_id = ?
+        `;
+
+        db.query(sql, [student_id], (err, rows) => {
+            if (err) return res.status(500).json({ message: "Server Error2" });
+
+            res.json(rows.length ? rows[0] : null);
         });
     });
 };

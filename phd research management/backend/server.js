@@ -14,6 +14,7 @@ app.use('/api/admin', require('./routes/admin'));
 app.use('/api/coordinator',require('./routes/coordinate'));
 app.use('/api/supervisor', require('./routes/supervisor'));
 app.use('/api/student',require('./routes/student'));
+app.use('/api/examiner',require('./routes/examiner'));
 app.use('/uploads', express.static('uploads'));
 
 

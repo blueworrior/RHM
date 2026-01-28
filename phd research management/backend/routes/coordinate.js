@@ -27,5 +27,9 @@ router.delete('/students/:student_id', auth, role(['coordinator']), coordinatorC
 // PUBLICATION (list all my department student )
 router.get('/publications', auth, role(['coordinator']), coordinatorController.getDepartmentPublications);
 
+// ASSIGN EXAMINER
+router.post('/assign-examiner', auth, role(['coordinator']), coordinatorController.assignExaminer
+);
+
 
 module.exports = router;

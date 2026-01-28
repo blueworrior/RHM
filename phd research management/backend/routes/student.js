@@ -5,6 +5,8 @@ const auth = require('../middleware/authMiddleware');
 const role = require('../middleware/roleMiddleware');
 const uploadProposal = require('../middleware/uploadProposal');
 const uploadProgress = require('../middleware/uploadProgress');
+const uploadThesis = require('../middleware/uploadThesis');
+
 
 const studentController = require('../controllers/studentController');
 
@@ -42,6 +44,13 @@ router.get('/progress-reports', auth, role(['student']), studentController.getMy
 router.post('/publications', auth, role(['student']), studentController.addPublication);
 // -> 2. List publication
 router.get('/publications', auth, role(['student']), studentController.getMypublication);
+
+
+// THESIS
+// -> 1. Add thesis
+router.post('/thesis', auth, role(['student']), uploadThesis.single('thesis_file') , studentController.submitThesis);
+// -> 2. List thesis
+router.get('/thesis', auth, role(['student']), studentController.getMyThesis);
 
 
 module.exports = router;
