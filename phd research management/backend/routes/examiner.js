@@ -6,8 +6,9 @@ const role = require('../middleware/roleMiddleware');
 
 // 1. see assign thesis
 router.get('/thesis', auth, role('examiner'), examinerController.getMyAssignedTheses);
-// 2. final decide thesis
-router.put('/thesis/:id/decision', auth, role('examiner'), examinerController.decideThesis);
+// 2. Evaluate Thesis
+router.post('/thesis/evaluate', auth, role('examiner'), examinerController.evaluateThesis);
+
 
 
 module.exports = router;

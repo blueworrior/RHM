@@ -39,13 +39,85 @@ exports.getMyAssignedTheses = (req, res) => {
 };
 
 // 2. Decide thesis
-exports.decideThesis = (req, res) => {
-    const user_id = req.user.id;
-    const thesis_id = req.params.id;
-    const { status, remarks } = req.body;
+// exports.decideThesis = (req, res) => {
+//     const user_id = req.user.id;
+//     const thesis_id = req.params.id;
+//     const { status, remarks } = req.body;
 
-    if (!status || !['Approved', 'Rejected'].includes(status))
-        return res.status(400).json({ message: "Invalid status" });
+//     if (status === 'Approved_Final')
+//     return res.status(403).json({ message: "Thesis is already finally approved and locked" });
+
+//     if (!status || !['Approved_Final', 'Rejected'].includes(status))
+//         return res.status(400).json({ message: "Invalid status" });
+
+
+
+//     // get examiner id
+//     db.query(examinersql, [user_id], (err, result) => {
+//         if (err) return res.status(500).json({ message: "Server Error1" });
+//         if (result.length === 0)
+//             return res.status(403).json({ message: "Not an examiner" });
+
+//         const examiner_id = result[0].id;
+
+//         // check assignment
+//         const checksql = `
+//             SELECT ea.id FROM examiner_assignments ea
+//             JOIN thesis t ON ea.thesis_id = t.id
+//             WHERE ea.examiner_id = ? AND t.id = ? AND t.status = 'Under_Examination'
+//         `;
+
+//         db.query(checksql, [examiner_id, thesis_id], (err, rows) => {
+//             if (err) return res.status(500).json({ message: "Server Error2" });
+//             if (rows.length === 0)
+//                 return res.status(403).json({ message: "Thesis not found or already decided" });
+
+//             // update thesis
+//             const updatesql = `
+//                 UPDATE thesis
+//                 SET status = ?
+//                 WHERE id = ?
+//             `;
+
+//             db.query(updatesql, [status, thesis_id], (err) => {
+//                 if (err) return res.status(500).json({ message: "Server Error3" });
+
+//                 // insert approval
+//                 const insertsql = `
+//                     INSERT INTO approvals
+//                     (reference_type, reference_id, approved_by, status, remarks)
+//                     VALUES (?, ?, ?, ?, ?)
+//                 `;
+
+//                 db.query(
+//                     insertsql,
+//                     ['thesis', thesis_id, user_id, status, remarks+'(Examiner)' || null],
+//                     (err) => {
+//                         if (err) {
+//                             // rollback
+//                             db.query(
+//                                 `UPDATE thesis SET status = 'Under_Examination' WHERE id = ?`,
+//                                 [thesis_id]
+//                             );
+//                             return res.status(500).json({ message: "Server Error4" });
+//                         }
+
+//                         res.json({ message: `Thesis ${status} successfully` });
+//                     }
+//                 );
+//             });
+//         });
+//     });
+// };
+
+
+// 2. Evaluate Thesis (Examiner)
+exports.evaluateThesis = (req, res) => {
+    const user_id = req.user.id;
+    const { thesis_id, grade, remarks } = req.body;
+
+    if (!thesis_id || !grade)
+        return res.status(400).json({ message: "Thesis ID and grade are required" });
 
     // get examiner id
     db.query(examinersql, [user_id], (err, result) => {
@@ -55,52 +127,46 @@ exports.decideThesis = (req, res) => {
 
         const examiner_id = result[0].id;
 
-        // check assignment
+        // check assignment + status
         const checksql = `
-            SELECT ea.id FROM examiner_assignments ea
+            SELECT ea.id
+            FROM examiner_assignments ea
             JOIN thesis t ON ea.thesis_id = t.id
-            WHERE ea.examiner_id = ? AND t.id = ? AND t.status = 'Under_Examination'
+            WHERE ea.examiner_id = ?
+              AND t.id = ?
+              AND t.status = 'Under_Examination'
         `;
 
         db.query(checksql, [examiner_id, thesis_id], (err, rows) => {
             if (err) return res.status(500).json({ message: "Server Error2" });
             if (rows.length === 0)
-                return res.status(403).json({ message: "Thesis not found or already decided" });
+                return res.status(403).json({ message: "Not authorized or invalid thesis status" });
 
-            // update thesis
-            const updatesql = `
-                UPDATE thesis
-                SET status = ?
-                WHERE id = ?
+            // prevent re-evaluation
+            const gradesql = `
+                SELECT id FROM examiner_grades
+                WHERE thesis_id = ? AND examiner_id = ?
             `;
 
-            db.query(updatesql, [status, thesis_id], (err) => {
+            db.query(gradesql, [thesis_id, examiner_id], (err, rows) => {
                 if (err) return res.status(500).json({ message: "Server Error3" });
+                if (rows.length > 0)
+                    return res.status(409).json({ message: "Already evaluated" });
 
-                // insert approval
+                // insert grade
                 const insertsql = `
-                    INSERT INTO approvals
-                    (reference_type, reference_id, approved_by, status, remarks)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO examiner_grades
+                    (thesis_id, examiner_id, grade, remarks)
+                    VALUES (?, ?, ?, ?)
                 `;
 
-                db.query(
-                    insertsql,
-                    ['thesis', thesis_id, user_id, status, remarks+'(Examiner)' || null],
-                    (err) => {
-                        if (err) {
-                            // rollback
-                            db.query(
-                                `UPDATE thesis SET status = 'Pending' WHERE id = ?`,
-                                [thesis_id]
-                            );
-                            return res.status(500).json({ message: "Server Error4" });
-                        }
+                db.query(insertsql, [thesis_id, examiner_id, grade, remarks || null], (err) => {
+                    if (err) return res.status(500).json({ message: "Server Error4" });
 
-                        res.json({ message: `Thesis ${status} successfully` });
-                    }
-                );
+                    res.json({ message: "Thesis evaluated successfully" });
+                });
             });
         });
     });
 };
+

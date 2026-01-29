@@ -51,6 +51,8 @@ router.get('/publications', auth, role(['student']), studentController.getMypubl
 router.post('/thesis', auth, role(['student']), uploadThesis.single('thesis_file') , studentController.submitThesis);
 // -> 2. List thesis
 router.get('/thesis', auth, role(['student']), studentController.getMyThesis);
+// -> 3. Resubmit Thesis
+router.put('/thesis/resubmit', auth, role(['student']), uploadThesis.single('thesis_file'), studentController.resubmitThesis);
 
 
 module.exports = router;

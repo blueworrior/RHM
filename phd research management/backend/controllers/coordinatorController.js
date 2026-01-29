@@ -493,3 +493,76 @@ exports.assignExaminer = (req, res) => {
     });
 };
 
+// 11. Finalize Thesis
+exports.finalizeThesis = (req, res) => {
+    const user_id = req.user.id;
+    const thesis_id = req.params.id;
+    const { status, remarks } = req.body;
+
+    if (!['Approved_Final', 'Rejected'].includes(status))
+        return res.status(400).json({ message: "Invalid final status" });
+
+    // get coordinator dept
+    db.query(deptsql, [user_id], (err, result) => {
+        if (err) return res.status(500).json({ message: "Server Error1" });
+        if (result.length === 0)
+            return res.status(403).json({ message: "Not a coordinator" });
+
+        const dept_id = result[0].dept_id;
+
+        // check thesis
+        const thesisSql = `
+            SELECT t.id
+            FROM thesis t
+            JOIN students s ON t.student_id = s.id
+            WHERE t.id = ?
+              AND s.dept_id = ?
+              AND t.status = 'Under_Examination'
+        `;
+
+        db.query(thesisSql, [thesis_id, dept_id], (err, rows) => {
+            if (err) return res.status(500).json({ message: "Server Error2" });
+            
+            // if(rows.status === 'Approved_Final'){
+            //     return res.status(403).json({ message: "Thesis is already finally approved and locked" });
+            // }
+            
+            if (rows.length === 0)
+                return res.status(403).json({ message: "Invalid thesis state" });
+            
+
+            // check examiner evaluations
+            const evalSql = `
+                SELECT COUNT(*) AS total
+                FROM examiner_grades
+                WHERE thesis_id = ?
+            `;
+
+            db.query(evalSql, [thesis_id], (err, rows) => {
+                if (err) return res.status(500).json({ message: "Server Error3" });
+                if (rows[0].total === 0)
+                    return res.status(409).json({ message: "No examiner evaluation yet" });
+
+                // update thesis
+                db.query(
+                    `UPDATE thesis SET status = ? WHERE id = ?`,
+                    [status, thesis_id],
+                    (err) => {
+                        if (err) return res.status(500).json({ message: "Server Error4" });
+
+                        // approval record
+                        db.query(
+                            `INSERT INTO approvals 
+                             (reference_type, reference_id, approved_by, status, remarks)
+                             VALUES ('thesis', ?, ?, ?, ?)`,
+                            [thesis_id, user_id, status, remarks || null],
+                            () => {
+                                res.json({ message: `Thesis ${status} successfully` });
+                            }
+                        );
+                    }
+                );
+            });
+        });
+    });
+};

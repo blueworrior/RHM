@@ -229,19 +229,19 @@ exports.addPublication = (req, res) => {
     const user_id = req.user.id;
     const { title, journal_name, year, type } = req.body;
 
-    if(!title || !year || !type)
+    if (!title || !year || !type)
         return res.status(400).json({ message: "Title, year and type are required" });
 
-    if(!['Journal','Conference'].includes(type))
+    if (!['Journal', 'Conference'].includes(type))
         return res.status(400).json({ message: "Type must be Conference or Journal" });
 
     // get student id
     db.query(stdsql, [user_id], (err, result) => {
         if (err) return res.status(500).json({ message: "Server Error1" });
 
-        if(result.length === 0)
+        if (result.length === 0)
             return res.status(500).json({ message: "Server Error2" });
-    
+
         const student_id = result[0].id;
 
         const insertsql = `
@@ -350,17 +350,99 @@ exports.getMyThesis = (req, res) => {
 
         const student_id = result[0].id;
 
+        // Get thesis with latest approval
         const sql = `
-            SELECT t.id, t.title, t.file_path, t.status, a.remarks, t.submitted_at
+            SELECT 
+                t.id,
+                t.title,
+                t.file_path,
+                t.status,
+                t.version,
+                a.status AS decision_status,
+                a.remarks
             FROM thesis t
-            JOIN approvals a ON t.id = a.reference_id
-            WHERE student_id = ?
+            LEFT JOIN approvals a
+                ON a.reference_type = 'thesis'
+                AND a.reference_id = t.id
+                AND a.id = (
+                    SELECT MAX(id)
+                    FROM approvals
+                    WHERE reference_type = 'thesis'
+                      AND reference_id = t.id
+                )
+            WHERE t.student_id = ?
         `;
+
 
         db.query(sql, [student_id], (err, rows) => {
             if (err) return res.status(500).json({ message: "Server Error2" });
 
             res.json(rows.length ? rows[0] : null);
+        });
+    });
+};
+
+// -> 3. Resubmit Thesis
+exports.resubmitThesis = (req, res) => {
+    const user_id = req.user.id;
+    const file = req.file;
+
+    if (!file)
+        return res.status(400).json({ message: "Thesis file is required" });
+
+    //get student id
+    db.query(stdsql, [user_id], (err, result) => {
+        if (err) return res.status(500).json({ message: "Server Error1" });
+
+        if (result.length === 0)
+            return res.status(403).json({ message: "Not a student" });
+
+        const file_path = 'uploads/thesis/' + req.file.filename;
+
+        const student_id = result[0].id;
+
+        // 2. check thesis status
+        const checksql = `
+            SELECT id, status, version
+            FROM thesis where student_id = ?
+            `;
+        db.query(checksql, [student_id], (err, rows) => {
+            if (err) return res.status(500).json({ message: "Server Error2" });
+
+            if (rows.length === 0)
+                return res.status(404).json({ message: "Thesis not found" });
+
+            const thesis = rows[0];
+
+            if (thesis.status !== 'Rejected')
+                return res.status(403).json({ message: "Thesis is not eligible for resubmission" });
+
+            // update thesis
+            const updatesql = `
+                UPDATE thesis 
+                SET file_path = ?,
+                    version = ?,
+                    status = ?
+                WHERE id = ?
+            `;
+            db.query(updatesql, [file_path, thesis.version + 1, 'Pending', thesis.id], (err) => {
+                if (err) return res.status(500).json({ message: "Server Error3" });
+
+                // 🔴 IMPORTANT: remove old examiner assignment
+                const deleteExaminerSql = `
+                    DELETE FROM examiner_assignments
+                    WHERE thesis_id = ?
+                `;
+
+                db.query(deleteExaminerSql, [thesis.id], (err) => {
+                    if (err) return res.status(500).json({ message: "Server Error4" });
+
+                    res.json({
+                        message: "Thesis Resubmitted successfully",
+                        new_version: thesis.version + 1
+                    });
+                });
+            });
         });
     });
 };

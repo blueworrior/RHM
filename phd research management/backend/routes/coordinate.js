@@ -28,8 +28,11 @@ router.delete('/students/:student_id', auth, role(['coordinator']), coordinatorC
 router.get('/publications', auth, role(['coordinator']), coordinatorController.getDepartmentPublications);
 
 // ASSIGN EXAMINER
-router.post('/assign-examiner', auth, role(['coordinator']), coordinatorController.assignExaminer
-);
+router.post('/assign-examiner', auth, role(['coordinator']), coordinatorController.assignExaminer);
+
+// Decide Thesis
+router.put('/thesis/:id/final-decision', auth, role(['coordinator']), coordinatorController.finalizeThesis);
+
 
 
 module.exports = router;
