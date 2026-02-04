@@ -314,4 +314,3 @@ exports.getExaminer = (req, res) => {
         res.json(result);
     });
 };
-

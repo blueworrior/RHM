@@ -352,27 +352,33 @@ exports.getMyThesis = (req, res) => {
 
         // Get thesis with latest approval
         const sql = `
-            SELECT 
+            SELECT
                 t.id,
                 t.title,
                 t.file_path,
                 t.status,
                 t.version,
+
                 a.status AS decision_status,
-                a.remarks
+                a.remarks,
+                a.approval_role,
+                a.approved_at
+
             FROM thesis t
+
             LEFT JOIN approvals a
-                ON a.reference_type = 'thesis'
-                AND a.reference_id = t.id
-                AND a.id = (
-                    SELECT MAX(id)
+                ON a.id = (
+                    SELECT id
                     FROM approvals
                     WHERE reference_type = 'thesis'
-                      AND reference_id = t.id
+                    AND reference_id = t.id
+                    AND thesis_version = t.version
+                    ORDER BY id DESC
+                    LIMIT 1
                 )
+
             WHERE t.student_id = ?
         `;
-
 
         db.query(sql, [student_id], (err, rows) => {
             if (err) return res.status(500).json({ message: "Server Error2" });
@@ -403,7 +409,7 @@ exports.resubmitThesis = (req, res) => {
 
         // 2. check thesis status
         const checksql = `
-            SELECT id, status, version
+            SELECT id, status, version, is_locked
             FROM thesis where student_id = ?
             `;
         db.query(checksql, [student_id], (err, rows) => {
@@ -411,22 +417,27 @@ exports.resubmitThesis = (req, res) => {
 
             if (rows.length === 0)
                 return res.status(404).json({ message: "Thesis not found" });
-
+            
             const thesis = rows[0];
+            
+            if (thesis.status !== 'Rejected' || thesis.is_locked)
+            return res.status(403).json({
+                message: "Final thesis is locked. Contact coordinator."
+            });
 
-            if (thesis.status !== 'Rejected')
-                return res.status(403).json({ message: "Thesis is not eligible for resubmission" });
 
             // update thesis
             const updatesql = `
-                UPDATE thesis 
+                UPDATE thesis
                 SET file_path = ?,
                     version = ?,
-                    status = ?
+                    status = ?,
+                    ready_for_final = FALSE
                 WHERE id = ?
             `;
+
             db.query(updatesql, [file_path, thesis.version + 1, 'Pending', thesis.id], (err) => {
-                if (err) return res.status(500).json({ message: "Server Error3" });
+                if (err) return res.status(500).json({ message: "Server Error3", error: err });
 
                 // 🔴 IMPORTANT: remove old examiner assignment
                 const deleteExaminerSql = `

@@ -7,7 +7,7 @@ const role = require('../middleware/roleMiddleware');
 // 1. see assign thesis
 router.get('/thesis', auth, role('examiner'), examinerController.getMyAssignedTheses);
 // 2. Evaluate Thesis
-router.post('/thesis/evaluate', auth, role('examiner'), examinerController.evaluateThesis);
+router.post('/thesis/:id/evaluate', auth, role('examiner'), examinerController.evaluateThesis);
 
 
 
