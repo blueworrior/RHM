@@ -1,0 +1,30 @@
+src
+│
+├── api
+│     authApi.js
+│     adminApi.js
+│
+├── pages
+│     ├── auth
+│     │      Login.jsx
+│     │      Unauthorized.jsx
+│     │
+│     ├── admin
+│     ├── coordinator
+│     ├── supervisor
+│     └── student
+│
+├── routes
+│     ProtectedRoute.jsx
+│
+├── context
+│     AuthContext.jsx
+│
+├── hooks
+│     useAuth.js
+│
+├── components
+│     Sidebar.jsx
+│     Navbar.jsx
+│
+└── App.jsx
