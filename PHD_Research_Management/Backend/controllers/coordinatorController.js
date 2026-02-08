@@ -1,10 +1,8 @@
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 
-//////////////////////////////////////////////////////////////
-// CREATE STUDENT (TRANSACTION SAFE)
-//////////////////////////////////////////////////////////////
 
+// CREATE STUDENT
 exports.createStudent = async (req, res) => {
 
     const conn = await db.promise().getConnection();

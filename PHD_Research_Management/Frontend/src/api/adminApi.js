@@ -26,6 +26,23 @@ export const createAdmin = async (data)=>{
 }
 
 
+// Users
+export const getAllUsers = async ()=>{
+    const res = await axios.get("/admin/users");
+    return res.data;
+};
+
+export const toggleUserStatus = async (id, status)=>{
+    const res = await axios.put(`/admin/users/${id}/status`, {status});
+    return res.data;
+};
+
+export const resetUserPassword = async (id, data)=>{
+    const res = await axios.put(`/admin/users/${id}/reset-password`, data);
+    return res.data;
+};
+
+
 // departments
 export const getDepartments = async ()=>{
     const res = await axios.get("/admin/departments");
@@ -35,6 +52,7 @@ export const createDepartment = async (data)=>{
     const res = await axios.post("/admin/departments", data);
     return res.data;
 }
+
 
 // coordinators
 export const getCoordinators = async ()=>{
@@ -46,6 +64,7 @@ export const createCoordinator = async (data)=>{
     return res.data;
 }
 
+
 // supervisors
 export const getSupervisors = async ()=>{
     const res = await axios.get("/admin/supervisors");
@@ -56,11 +75,13 @@ export const createSupervisor = async (data)=>{
     return res.data;
 }
 
+
 // students
-export const getstudents = async ()=>{
+export const getStudents = async ()=>{
     const res = await axios.get("/admin/students");
     return res.data;
 }
+
 
 // examiners
 export const getExaminers = async ()=>{

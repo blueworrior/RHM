@@ -16,7 +16,7 @@ export default function CreateDepartmentModal({ open, handleClose, refresh }) {
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async () => {
-        if (!name.return) return;
+        if (!name.trim()) return;
 
         try {
             setLoading(true);
@@ -42,11 +42,11 @@ export default function CreateDepartmentModal({ open, handleClose, refresh }) {
 
             <DialogContent>
                 <TextField
-                    label='Departmemt Name'
+                    label='Department Name'
                     fullWidth
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    xs={{ mt: 2 }}
+                    sx={{ mt: 2 }}
                 />
             </DialogContent>
             <DialogActions>

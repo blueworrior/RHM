@@ -10,6 +10,7 @@ import AdminDashboard from '../pages/dashboards/AdminDashboard'
 import AdminDepartments from '../pages/admin/AdminDepartments';
 
 import ProtectedRoute from '../components/ProtectedRoute';
+import AdminUsers from '../pages/admin/AdminUsers';
 
 export default function AppRoputes(){
     return(
@@ -21,6 +22,7 @@ export default function AppRoputes(){
                 <Route element={<ProtectedRoute  role='admin'/>}>
 
                     <Route path='/admin' element={<AdminDashboard/>}/>
+                    <Route path='/admin/users' element={<AdminUsers/>}/>
                     <Route path='/admin/departments' element={<AdminDepartments/>}/>
                 
                 </Route>

@@ -20,6 +20,7 @@ exports.login = async (req, res) => {
                 users.first_name,
                 users.last_name,
                 users.password,
+                users.status,
                 users.is_super_admin,
                 roles.name AS role
             FROM users
@@ -36,6 +37,13 @@ exports.login = async (req, res) => {
         }
 
         const user = results[0];
+
+        // block inactive FIRST
+        if (user.status === 'inactive') {
+            return res.status(403).json({
+                message: "Your account has been deactivated. Please contact administrator."
+            });
+        }
 
         const isMatch = await bcrypt.compare(password, user.password);
 

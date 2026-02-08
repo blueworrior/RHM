@@ -10,10 +10,26 @@ const adminController = require('../controllers/adminController');
 // Admin
 router.post('/admins', auth, role(['admin']), superAdminOnly, adminController.createAdmin);
 
+// users
+router.get('/users', auth, role(['admin']), adminController.getAllUsers);
+router.put('/users/:userId/reset-password',
+    auth,
+    role(['admin']),
+    adminController.resetUserPassword
+);
+router.put('/users/:userId/status',
+    auth,
+    role(['admin']),
+    adminController.toggleUserStatus
+);
+
 
 // Department
 router.post('/departments', auth, role(['admin']), adminController.createDepartment);
 router.get('/departments', auth, role(['admin']), adminController.getDepartments);
+router.put('/departments/:id', auth, role(['admin']), adminController.updateDepartment);
+router.delete('/departments/:id', auth, role(['admin']), adminController.deleteDepartment);
+
 
 // Coordinator
 router.post('/coordinators', auth, role(['admin']), adminController.createCoordinator);

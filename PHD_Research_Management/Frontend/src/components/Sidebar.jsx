@@ -4,7 +4,8 @@ import PeopleIcon from '@mui/icons-material/People';
 import SchoolIcon from '@mui/icons-material/School';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import LogoutIcon from '@mui/icons-material/Logout';
-
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import ApartmentIcon from '@mui/icons-material/Apartment';
 import { useNavigate } from "react-router-dom";
 import { useAuth } from '../context/AuthContext';
 import logo from '../assets/logo.png';
@@ -20,7 +21,8 @@ export default function Sidebar(){
     const menuByRole = {
         admin:[
             {text:'Dashboard', icon:<DashboardIcon/>, path:'/admin'},
-            {text:'Departments', icon:<PeopleIcon/>, path:'/admin/departments'},
+            {text:'Users', icon:<AccountTreeIcon/>, path:'/admin/users'},
+            {text:'Departments', icon:<AccountTreeIcon/>, path:'/admin/departments'},
             {text:'Programs', icon:<SchoolIcon/>, path:'/admin/programs'},
         ],
         supervisor:[

@@ -2,10 +2,7 @@ const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 
 
-/* =====================================================
-   ✅ CREATE ADMIN (SUPER ADMIN ONLY)
-===================================================== */
-
+// CREATE ADMIN (SUPER ADMIN ONLY)
 exports.createAdmin = async (req, res) => {
 
     const connection = await db.promise().getConnection();
@@ -67,12 +64,145 @@ exports.createAdmin = async (req, res) => {
     }
 };
 
+// USERS
+exports.getAllUsers = async (req, res) => {
+
+    try {
+
+        let query = `
+            SELECT 
+                u.id,
+                u.first_name,
+                u.last_name,
+                u.email,
+                u.status,
+                u.is_super_admin,
+                r.name AS role
+            FROM users u
+            JOIN roles r ON u.role_id = r.id
+        `;
+
+        // ✅ If NOT super admin → hide super admin
+        if (!req.user.is_super_admin) {
+            query += ` WHERE u.is_super_admin = false`;
+        }
+
+        query += ` ORDER BY r.name ASC`;
+
+        const [rows] = await db.promise().query(query);
+
+        res.json(rows);
+
+    } catch (err) {
+
+        console.error(err);
+        res.status(500).json({
+            message: "Server Error"
+        });
+
+    }
+};
+
+exports.resetUserPassword = async (req, res) => {
+
+    try {
+
+        const { userId } = req.params;
+        const { password } = req.body;
+
+        // ✅ check if super admin
+        const [user] = await db.promise().query(
+            'SELECT is_super_admin FROM users WHERE id = ?',
+            [userId]
+        );
+
+        if (user.length === 0) {
+            return res.status(404).json({
+                message: "User not found"
+            });
+        }
+
+        if (user[0].is_super_admin) {
+            return res.status(403).json({
+                message: "Super Admin password cannot be reset"
+            });
+        }
+
+        const hashPass = await bcrypt.hash(password, 10);
+
+        await db.promise().query(
+            'UPDATE users SET password = ? WHERE id = ?',
+            [hashPass, userId]
+        );
+
+        res.json({
+            message: "Password reset successfully"
+        });
+
+    } catch (err) {
+
+        console.error(err);
+        res.status(500).json({ message: "Server Error" });
+
+    }
+};
+
+// soft delete
+exports.toggleUserStatus = async (req, res) => {
+
+    try {
+
+        const { userId } = req.params;
+        const { status } = req.body;
+
+        if (req.user.id == userId) {
+            return res.status(403).json({
+                message: "You cannot deactivate your own account"
+            });
+        }
+
+        const [user] = await db.promise().query(
+            'SELECT is_super_admin, status FROM users WHERE id = ?',
+            [userId]
+        );
+
+        if (user.length === 0) {
+            return res.status(404).json({
+                message: "User not found"
+            });
+        }
+
+        if (user[0].is_super_admin) {
+            return res.status(403).json({
+                message: "Super Admin cannot be deactivated"
+            });
+        }
+
+        if (user[0].status === status) {
+            return res.status(403).json({
+                message: `User is already ${status}`
+            });
+        }
+
+        await db.promise().query(
+            'UPDATE users SET status = ? WHERE id = ?',
+            [status, userId]
+        );
+
+        res.json({
+            message: `User ${status} successfully`
+        });
+
+    } catch (err) {
+
+        console.error(err);
+        res.status(500).json({ message: "Server Error" });
+
+    }
+};
 
 
-/* =====================================================
-   DEPARTMENTS
-===================================================== */
-
+// DEPARTMENTS
 exports.createDepartment = async (req, res) => {
 
     try {
@@ -115,7 +245,6 @@ exports.createDepartment = async (req, res) => {
 };
 
 
-
 exports.getDepartments = async (req, res) => {
 
     try {
@@ -133,12 +262,99 @@ exports.getDepartments = async (req, res) => {
     }
 };
 
+exports.updateDepartment = async (req, res) => {
+
+    try {
+
+        const { id } = req.params;
+        const { name } = req.body;
+
+        if (!name) {
+            return res.status(400).json({
+                message: "Department name is required"
+            });
+        }
+
+        // check duplicate
+        const [existing] = await db.promise().query(
+            'SELECT id FROM departments WHERE name = ? AND id != ?',
+            [name, id]
+        );
+
+        if (existing.length > 0) {
+            return res.status(409).json({
+                message: "Department already exists"
+            });
+        }
+
+        const [result] = await db.promise().query(
+            'UPDATE departments SET name = ? WHERE id = ?',
+            [name, id]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                message: "Department not found"
+            });
+        }
+
+        res.json({
+            message: "Department updated successfully"
+        });
+
+    } catch (err) {
+
+        console.error(err);
+        res.status(500).json({ message: "Server Error" });
+
+    }
+};
+
+exports.deleteDepartment = async (req, res) => {
+
+    try {
+
+        const { id } = req.params;
+
+        // check usage in students
+        const [students] = await db.promise().query(
+            'SELECT id FROM students WHERE dept_id = ? LIMIT 1',
+            [id]
+        );
+
+        if (students.length > 0) {
+            return res.status(400).json({
+                message: "Cannot delete department assigned to students"
+            });
+        }
+
+        const [result] = await db.promise().query(
+            'DELETE FROM departments WHERE id = ?',
+            [id]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                message: "Department not found"
+            });
+        }
+
+        res.json({
+            message: "Department deleted successfully"
+        });
+
+    } catch (err) {
+
+        console.error(err);
+        res.status(500).json({ message: "Server Error" });
+
+    }
+};
 
 
-/* =====================================================
-   CREATE COORDINATOR (TRANSACTION)
-===================================================== */
 
+
+// CREATE COORDINATOR (TRANSACTION)
 exports.createCoordinator = async (req, res) => {
 
     const connection = await db.promise().getConnection();
@@ -224,10 +440,8 @@ exports.getCoordinator = async (req, res) => {
 
 
 
-/* =====================================================
-   CREATE SUPERVISOR (TRANSACTION)
-===================================================== */
 
+// CREATE SUPERVISOR (TRANSACTION)
 exports.createSupervisor = async (req, res) => {
 
     const connection = await db.promise().getConnection();
@@ -322,10 +536,8 @@ exports.getSupervisor = async (req, res) => {
 
 
 
-/* =====================================================
-   STUDENTS LIST
-===================================================== */
 
+// STUDENTS LIST
 exports.getAllStudents = async (req, res) => {
 
     try {
@@ -357,11 +569,7 @@ exports.getAllStudents = async (req, res) => {
 };
 
 
-
-/* =====================================================
-   CREATE EXAMINER (TRANSACTION)
-===================================================== */
-
+// CREATE EXAMINER (TRANSACTION)
 exports.createExaminer = async (req, res) => {
 
     const connection = await db.promise().getConnection();
