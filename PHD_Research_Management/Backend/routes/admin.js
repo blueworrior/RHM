@@ -30,6 +30,4 @@ router.get('/students', auth, role(['admin']), adminController.getAllStudents);
 router.post('/examiners', auth, role(['admin']), adminController.createExaminer);
 router.get('/examiners', auth, role(['admin']), adminController.getExaminer);
 
-
-
 module.exports = router;

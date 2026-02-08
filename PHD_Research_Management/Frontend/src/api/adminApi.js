@@ -1,0 +1,74 @@
+import axios from "./axios";
+
+// Dashboard counts
+export const getTotalStudents = async ()=>{
+    const res = await axios.get("/admin/students");
+    return res.data.length;
+}
+export const getTotalSupervisors = async ()=>{
+    const res = await axios.get("/admin/supervisors");
+    return res.data.length;
+}
+export const getTotalCoordinators = async ()=>{
+    const res = await axios.get("/admin/coordinators");
+    return res.data.length;
+}
+export const getTotalDepartments = async ()=>{
+    const res = await axios.get("/admin/departments");
+    return res.data.length;
+}
+
+
+// admin
+export const createAdmin = async (data)=>{
+    const res = await axios.post("/admin/admins", data);
+    return res.data;
+}
+
+
+// departments
+export const getDepartments = async ()=>{
+    const res = await axios.get("/admin/departments");
+    return res.data;
+}
+export const createDepartment = async (data)=>{
+    const res = await axios.post("/admin/departments", data);
+    return res.data;
+}
+
+// coordinators
+export const getCoordinators = async ()=>{
+    const res = await axios.get("/admin/coordinators");
+    return res.data;
+}
+export const createCoordinator = async (data)=>{
+    const res = await axios.post("/admin/coordinators", data);
+    return res.data;
+}
+
+// supervisors
+export const getSupervisors = async ()=>{
+    const res = await axios.get("/admin/supervisors");
+    return res.data;
+}
+export const createSupervisor = async (data)=>{
+    const res = await axios.post("/admin/supervisors", data);
+    return res.data;
+}
+
+// students
+export const getstudents = async ()=>{
+    const res = await axios.get("/admin/students");
+    return res.data;
+}
+
+// examiners
+export const getExaminers = async ()=>{
+    const res = await axios.get("/admin/examiners");
+    return res.data;
+}
+export const createExaminer = async (data)=>{
+    const res = await axios.post("/admin/examiners", data);
+    return res.data;
+}
+

@@ -1,30 +1,53 @@
 src
 │
 ├── api
-│     authApi.js
+│     axios.js
 │     adminApi.js
+│     authApi.js
 │
-├── pages
-│     ├── auth
-│     │      Login.jsx
-│     │      Unauthorized.jsx
-│     │
-│     ├── admin
-│     ├── coordinator
-│     ├── supervisor
-│     └── student
+├── app
+│     theme.js
 │
-├── routes
-│     ProtectedRoute.jsx
+├── assets
+│     logo.png
+│
+├── components
+│       admin
+│           CreateDepartmentModal.jsx
+│           DepartmentTable.jsx
+│
+│       dashboard
+│           ActivityPanel.jsx
+│           AdminChart.jsx
+│           StatCard.jsx
+│
+│       Navbar.jsx
+│       Sidebar.jsx
+│       Loader.jsx
+│       ProtectedRoute.jsx
 │
 ├── context
 │     AuthContext.jsx
 │
-├── hooks
-│     useAuth.js
+├── layouts
+│     DashboardLayout.jsx
 │
-├── components
-│     Sidebar.jsx
-│     Navbar.jsx
+├── pages
+│     auth
+│        Login.jsx
 │
-└── App.jsx
+│     admin
+│        AdminDepartments.jsx
+│
+│     dashboards
+│        AdminDashboard.jsx
+│        SupervisorDashboard.jsx
+│        StudentDashboard.jsx
+│        CoordinatorDashboard.jsx
+│
+├── routes
+│     AppRoutes.jsx
+│
+├── App.jsx
+│
+└── main.jsx

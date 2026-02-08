@@ -1,3 +1,205 @@
+Routes(api):
+admin.js:
+const express = require('express');
+const router = express.Router();
+
+const auth = require('../middleware/authMiddleware');
+const role = require('../middleware/roleMiddleware');
+const superAdminOnly = require('../middleware/superAdminOnly');
+
+const adminController = require('../controllers/adminController');
+
+// Admin
+router.post('/admins', auth, role(['admin']), superAdminOnly, adminController.createAdmin);
+
+
+// Department
+router.post('/departments', auth, role(['admin']), adminController.createDepartment);
+router.get('/departments', auth, role(['admin']), adminController.getDepartments);
+
+// Coordinator
+router.post('/coordinators', auth, role(['admin']), adminController.createCoordinator);
+router.get('/coordinators', auth, role(['admin']), adminController.getCoordinator);
+
+// Supervisor
+router.post('/supervisors', auth, role(['admin']), adminController.createSupervisor);
+router.get('/supervisors', auth, role(['admin']), adminController.getSupervisor);
+
+// Students
+router.get('/students', auth, role(['admin']), adminController.getAllStudents);
+
+// Examiner
+router.post('/examiners', auth, role(['admin']), adminController.createExaminer);
+router.get('/examiners', auth, role(['admin']), adminController.getExaminer);
+
+module.exports = router;
+
+coordinator.js:
+const express = require('express');
+const router = express.Router();
+
+const auth = require('../middleware/authMiddleware');
+const role = require('../middleware/roleMiddleware');
+
+const coordinatorController = require('../controllers/coordinatorController');
+
+// STUDENTS
+// -> 1. create sttudent
+router.post('/students', auth, role(['coordinator']), coordinatorController.createStudent);
+// -> 2. list students of my department
+router.get('/my-students', auth, role(['coordinator']), coordinatorController.getMyDepartmentStudents);
+// -> 3. list students without supervisor
+router.get('/unassigned-students', auth, role(['coordinator']), coordinatorController.getUnassignedStudents);
+// -> 4 . update student
+router.put('/students', auth, role(['coordinator']), coordinatorController.updateStudent);
+// -> 5. delete student
+router.delete('/students/:student_id', auth, role(['coordinator']), coordinatorController.deleteStudent);
+
+// -> 6. list supervisors of my department
+router.get('/my-supervisors', auth, role(['coordinator']), coordinatorController.getMyDepartmentSupervisors);
+// -> 7. assign supervisor to student
+router.put('/assign-supervisor', auth, role(['coordinator']), coordinatorController.assignSupervisor);
+// -> 8. remove supervisor
+router.put('/remove-supervisor', auth, role(['coordinator']), coordinatorController.removeSupervisor);
+
+// -> 9. PUBLICATION (list all my department student )
+router.get('/publications', auth, role(['coordinator']), coordinatorController.getDepartmentPublications);
+
+// -> 10 ASSIGN EXAMINER
+router.post('/assign-examiner', auth, role(['coordinator']), coordinatorController.assignExaminer);
+
+// -> 11 GET thesis with evaluations
+router.get('/thesis/evaluated', auth, role(['coordinator']), coordinatorController.getEvaluatedTheses);
+// -> 12 Get Thesis Evaluations
+router.get('/thesis/:id/evaluations', auth, role(['coordinator']), coordinatorController.getThesisEvaluations);
+// -> 13 Get Ready thesis
+router.get('/thesis/ready', auth, role(['coordinator']), coordinatorController.getReadyThesis); 
+// -> 14 Decide Thesis
+router.put('/thesis/:id/final-decision', auth, role(['coordinator']), coordinatorController.finalizeThesis);
+
+module.exports = router;
+
+supervisor.js:
+const express = require('express');
+const router = express.Router();
+
+const auth = require('../middleware/authMiddleware');
+const role = require('../middleware/roleMiddleware');
+
+const supervisorProposal = require('../controllers/supervisorController');
+
+// Proposals
+// -> 1. List Student proposal
+router.get('/proposals', auth, role(['supervisor']), supervisorProposal.getMyStudentProposals);
+// -> 2. Appprove / Reject Proposal
+router.put('/proposals/:id/decision', auth, role(['supervisor']), supervisorProposal.decideProposal);
+
+
+// PROGRESS REPORTS
+// -> 1. List my student progress REports
+router.get('/progress-reports', auth, role(['supervisor']), supervisorProposal.getStudentProgressReports);
+// -> 2. Approve/ Reject Progress Report
+router.put('/progress-reports/:id/decision', auth, role(['supervisor']), supervisorProposal.decideProgressReport);
+//PUblication (list my students publication)
+router.get('/publications', auth, role(['supervisor']), supervisorProposal.getMyStudentPublications);
+
+
+// Thesis
+// -> 1. List my student Thesis
+router.get('/thesis', auth, role(['supervisor']), supervisorProposal.getMyStudentThesis);
+// -> 2. Approve/ Reject thesis
+router.put('/thesis/:id/decision', auth, role(['supervisor']), supervisorProposal.decideThesis);
+
+module.exports = router;
+
+student.js:
+const express = require('express');
+const router = express.Router();
+
+const auth = require('../middleware/authMiddleware');
+const role = require('../middleware/roleMiddleware');
+const uploadProposal = require('../middleware/uploadProposal');
+const uploadProgress = require('../middleware/uploadProgress');
+const uploadThesis = require('../middleware/uploadThesis');
+
+
+const studentController = require('../controllers/studentController');
+
+
+// PROPOSALS
+// -> 1.Submit proposal
+router.post(
+    '/proposals', 
+    auth, 
+    role(['student']), 
+    uploadProposal.single('proposal_file'), 
+    studentController.submitProposal
+);
+// -> 2. List propsal
+router.get('/proposals', auth, role(['student']), studentController.getMyProposals);
+// -> 3. view proposal status + remarks
+router.get('/proposals/status', auth, role(['student']), studentController.getMyProposalStatus);
+
+
+// PROGRESS REPORTS
+// -> 1. Submit progress report
+router.post(
+    '/progress-reports',
+    auth,
+    role(['student']),
+    uploadProgress.single('report_file'),
+    studentController.submitProgressReport
+);
+// -> 2. List Progress Report
+router.get('/progress-reports', auth, role(['student']), studentController.getMyProgressReport);
+
+
+// Publication
+// -> 1. Add publication
+router.post('/publications', auth, role(['student']), studentController.addPublication);
+// -> 2. List publication
+router.get('/publications', auth, role(['student']), studentController.getMypublication);
+
+
+// THESIS
+// -> 1. Add thesis
+router.post('/thesis', auth, role(['student']), uploadThesis.single('thesis_file') , studentController.submitThesis);
+// -> 2. List thesis
+router.get('/thesis', auth, role(['student']), studentController.getMyThesis);
+// -> 3. Resubmit Thesis
+router.put('/thesis/resubmit', auth, role(['student']), uploadThesis.single('thesis_file'), studentController.resubmitThesis);
+
+module.exports = router;
+
+examiner.js:
+const express = require('express');
+const router = express.Router();
+const examinerController = require('../controllers/examinerController');
+const auth = require('../middleware/authMiddleware');
+const role = require('../middleware/roleMiddleware');
+
+// 1. see assign thesis
+router.get('/thesis', auth, role('examiner'), examinerController.getMyAssignedTheses);
+// 2. Evaluate Thesis
+router.post('/thesis/:id/evaluate', auth, role('examiner'), examinerController.evaluateThesis);
+
+module.exports = router;
+
+
+auth.js:
+const express = require('express');
+const router = express.Router();
+const authController = require('../controllers/authController');
+
+// LOGIN
+router.post('/login', authController.login);
+
+module.exports = router;
+
+
+
+
+API CODE(Controllers):
 ...this is adminControllers.js:
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
