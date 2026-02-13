@@ -22,8 +22,9 @@ export default function Sidebar(){
         admin:[
             {text:'Dashboard', icon:<DashboardIcon/>, path:'/admin'},
             {text:'Users', icon:<AccountTreeIcon/>, path:'/admin/users'},
-            {text:'Departments', icon:<AccountTreeIcon/>, path:'/admin/departments'},
-            {text:'Programs', icon:<SchoolIcon/>, path:'/admin/programs'},
+            {text:'Departments', icon:<ApartmentIcon/>, path:'/admin/departments'},
+            {text:'Coordinators', icon:<PeopleIcon/>, path:'/admin/coordinators'},
+            {text:'Supervisors', icon:<PeopleIcon/>, path:'/admin/supervisors'}
         ],
         supervisor:[
             {text:'Dashboard', icon:<DashboardIcon/>, path:'/supervisor'},

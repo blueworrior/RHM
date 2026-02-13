@@ -11,6 +11,8 @@ import AdminDepartments from '../pages/admin/AdminDepartments';
 
 import ProtectedRoute from '../components/ProtectedRoute';
 import AdminUsers from '../pages/admin/AdminUsers';
+import AdminCoordinators from '../pages/admin/AdminCoordinators';
+import AdminSupervisors from '../pages/admin/AdminSupervisor';
 
 export default function AppRoputes(){
     return(
@@ -24,6 +26,8 @@ export default function AppRoputes(){
                     <Route path='/admin' element={<AdminDashboard/>}/>
                     <Route path='/admin/users' element={<AdminUsers/>}/>
                     <Route path='/admin/departments' element={<AdminDepartments/>}/>
+                    <Route path='/admin/coordinators' element={<AdminCoordinators/>}/>
+                    <Route path='/admin/supervisors' element={<AdminSupervisors/>}/>
                 
                 </Route>
 

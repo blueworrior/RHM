@@ -1,9 +1,9 @@
 src
 │
 ├── api
-│     axios.js
 │     adminApi.js
 │     authApi.js
+│     axios.js
 │
 ├── app
 │     theme.js
@@ -13,18 +13,29 @@ src
 │
 ├── components
 │       admin
+│           CreateAdminModal.jsx
+│           CreateCoordinatorModal.jsx
 │           CreateDepartmentModal.jsx
-│           DepartmentTable.jsx
+│           CreateSupervisorModal.jsx
+│           EditCoordinatorModal.jsx
+│           EditDepartmentModal.jsx
+│           EditSupervisorModal.jsx
+│           ResetPassword.jsx
+│
+│       common
+│           AppTable.jsx
+│           ConfirmDialog.jsx
+│           FormModal.jsx
 │
 │       dashboard
 │           ActivityPanel.jsx
 │           AdminChart.jsx
 │           StatCard.jsx
 │
-│       Navbar.jsx
-│       Sidebar.jsx
 │       Loader.jsx
 │       ProtectedRoute.jsx
+│       Sidebar.jsx
+│       Topbar.jsx
 │
 ├── context
 │     AuthContext.jsx
@@ -33,17 +44,21 @@ src
 │     DashboardLayout.jsx
 │
 ├── pages
+│     admin
+│        AdminCoordinators.jsx
+│        AdminDepartments.jsx
+│        AdminSupervisors.jsx
+│        AdminUsers.jsx
+│
 │     auth
 │        Login.jsx
 │
-│     admin
-│        AdminDepartments.jsx
-│
 │     dashboards
 │        AdminDashboard.jsx
-│        SupervisorDashboard.jsx
-│        StudentDashboard.jsx
-│        CoordinatorDashboard.jsx
+│        CoordinatorDashboard.jsx   (empty bcz currently working on admin)
+│        SupervisorDashboard.jsx    (empty bcz currently working on admin)
+│        StudentDashboard.jsx       (empty bcz currently working on admin)
+│        ExaminerDashboard.jsx      (empty bcz currently working on admin)
 │
 ├── routes
 │     AppRoutes.jsx

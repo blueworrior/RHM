@@ -5,21 +5,23 @@ import { useAuth } from '../../context/AuthContext'
 import { Box, TextField, Typography, Button, Paper } from '@mui/material'
 import { motion } from 'framer-motion'
 import logo from '../../assets/logo.png'   // ✅ safer path
+import { useSnackbar } from '../../context/SnackbarContext'
 
 const Login = () => {
 
-    const [email, setEmail] = useState('')  
-    const [password, setPassword] = useState('')
-    const [loading, setLoading] = useState(false)
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const { showSnackbar } = useSnackbar();
 
-    const navigate = useNavigate()
-    const { login } = useAuth()   // ✅ FIXED destructuring
+    const navigate = useNavigate();
+    const { login } = useAuth();
 
     const handleLogin = async () => {
 
         // 🔥 basic frontend validation
         if (!email || !password) {
-            alert("Please enter email and password")
+            showSnackbar("Please enter email and password", "error")
             return
         }
 
@@ -40,11 +42,12 @@ const Login = () => {
 
             // 🔥 clean redirect pattern
             navigate(`/${role}`, { replace: true });
+            showSnackbar("Login successfully", "success");
 
         } catch (error) {
 
             console.error(error)
-            alert("Invalid email or password");
+            showSnackbar("Invalid email or password", "error");
 
         } finally {
 

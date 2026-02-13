@@ -34,10 +34,12 @@ router.delete('/departments/:id', auth, role(['admin']), adminController.deleteD
 // Coordinator
 router.post('/coordinators', auth, role(['admin']), adminController.createCoordinator);
 router.get('/coordinators', auth, role(['admin']), adminController.getCoordinator);
+router.put('/coordinators/:user_id', auth, role(['admin']), adminController.updateCoordinator);
 
 // Supervisor
 router.post('/supervisors', auth, role(['admin']), adminController.createSupervisor);
 router.get('/supervisors', auth, role(['admin']), adminController.getSupervisor);
+router.put('/supervisors/:user_id', auth, role(['admin']), adminController.updateSupervisor);
 
 // Students
 router.get('/students', auth, role(['admin']), adminController.getAllStudents);
@@ -45,5 +47,6 @@ router.get('/students', auth, role(['admin']), adminController.getAllStudents);
 // Examiner
 router.post('/examiners', auth, role(['admin']), adminController.createExaminer);
 router.get('/examiners', auth, role(['admin']), adminController.getExaminer);
+router.put('/examiners/:user_id', auth, role(['admin']), adminController.updateExaminer);
 
 module.exports = router;

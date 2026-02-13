@@ -21,6 +21,13 @@ exports.createAdmin = async (req, res) => {
         if (!first_name || !last_name || !email || !password) {
             return res.status(400).json({ message: "All fields required" });
         }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({
+                message: "Invalid email format"
+            });
+        }
 
         await connection.beginTransaction();
 
@@ -30,7 +37,7 @@ exports.createAdmin = async (req, res) => {
             [email]
         );
 
-        if (existing.length > 0) {
+        if (existing.length) {
             await connection.rollback();
             return res.status(409).json({ message: "Email already exists" });
         }
@@ -87,7 +94,7 @@ exports.getAllUsers = async (req, res) => {
             query += ` WHERE u.is_super_admin = false`;
         }
 
-        query += ` ORDER BY r.name ASC`;
+        query += ` ORDER BY u.is_super_admin DESC, r.id ASC`;
 
         const [rows] = await db.promise().query(query);
 
@@ -125,6 +132,18 @@ exports.resetUserPassword = async (req, res) => {
         if (user[0].is_super_admin) {
             return res.status(403).json({
                 message: "Super Admin password cannot be reset"
+            });
+        }
+
+        if (req.user.id === userId) {
+            return res.status(403).json({
+                message: "You cannot reset your own password"
+            });
+        }
+
+        if (user[0].role_id === 1) {
+            return res.status(403).json({
+                message: "You cannot reset admin password"
             });
         }
 
@@ -250,7 +269,7 @@ exports.getDepartments = async (req, res) => {
     try {
 
         const [rows] = await db.promise().query(
-            `SELECT id, name FROM departments ORDER BY name`
+            `SELECT id, name FROM departments ORDER BY id`
         );
 
         res.json(rows);
@@ -366,6 +385,13 @@ exports.createCoordinator = async (req, res) => {
         if (!first_name || !last_name || !email || !password || !dept_id) {
             return res.status(400).json({ message: "All fields are required" });
         }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({
+                message: "Invalid email format"
+            });
+        }
 
         await connection.beginTransaction();
 
@@ -409,9 +435,7 @@ exports.createCoordinator = async (req, res) => {
     } finally {
         connection.release();
     }
-};
-
-
+}
 
 exports.getCoordinator = async (req, res) => {
 
@@ -427,7 +451,7 @@ exports.getCoordinator = async (req, res) => {
             FROM users u
             JOIN coordinators c ON u.id = c.user_id
             JOIN departments d ON c.dept_id = d.id
-            ORDER BY u.first_name
+            ORDER BY u.id
         `);
 
         res.json(rows);
@@ -435,6 +459,83 @@ exports.getCoordinator = async (req, res) => {
     } catch {
 
         res.status(500).json({ message: "Server Error" });
+    }
+};
+
+exports.updateCoordinator = async (req, res) => {
+
+    const connection = await db.promise().getConnection();
+
+    try {
+
+        const { user_id } = req.params;
+        const { first_name, last_name, email, dept_id } = req.body;
+
+        if (!first_name || !last_name || !email || !dept_id) {
+            return res.status(400).json({
+                message: "All fields are required"
+            });
+        }
+
+        await connection.beginTransaction();
+
+        // ✅ check if user exists
+        const [userCheck] = await connection.query(
+            'SELECT id FROM users WHERE id = ?',
+            [user_id]
+        );
+
+        if (!userCheck.length) {
+            await connection.rollback();
+            return res.status(404).json({
+                message: "Coordinator not found"
+            });
+        }
+
+        // ✅ email duplicate check (ignore current user)
+        const [existing] = await connection.query(
+            'SELECT id FROM users WHERE email = ? AND id != ?',
+            [email, user_id]
+        );
+
+        if (existing.length) {
+            await connection.rollback();
+            return res.status(409).json({
+                message: "Email already exists"
+            });
+        }
+
+        // ✅ update users table
+        await connection.query(`
+            UPDATE users
+            SET first_name = ?, last_name = ?, email = ?
+            WHERE id = ?
+        `, [first_name, last_name, email, user_id]);
+
+        // ✅ update coordinator table
+        await connection.query(`
+            UPDATE coordinators
+            SET dept_id = ?
+            WHERE user_id = ?
+        `, [dept_id, user_id]);
+
+        await connection.commit();
+
+        res.json({
+            message: "Coordinator updated successfully"
+        });
+
+    } catch (err) {
+
+        await connection.rollback();
+        console.error(err);
+
+        res.status(500).json({
+            message: "Server Error"
+        });
+
+    } finally {
+        connection.release();
     }
 };
 
@@ -460,6 +561,13 @@ exports.createSupervisor = async (req, res) => {
 
         if (!first_name || !last_name || !email || !password || !dept_id || !designation || !expertise) {
             return res.status(400).json({ message: "All fields required" });
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({
+                message: "Invalid email format"
+            });
         }
 
         await connection.beginTransaction();
@@ -515,15 +623,17 @@ exports.getSupervisor = async (req, res) => {
 
         const [rows] = await db.promise().query(`
             SELECT
-                s.id AS supervisor_id,
+                u.id AS user_id,
                 u.first_name,
                 u.last_name,
                 u.email,
-                d.name AS department
+                d.name AS department,
+                s.designation,
+                s.expertise
             FROM users u
             JOIN supervisors s ON s.user_id = u.id
             JOIN departments d ON s.dept_id = d.id
-            ORDER BY u.first_name
+            ORDER BY u.id
         `);
 
         res.json(rows);
@@ -531,6 +641,83 @@ exports.getSupervisor = async (req, res) => {
     } catch {
 
         res.status(500).json({ message: "Server Error" });
+    }
+};
+
+exports.updateSupervisor = async (req, res) => {
+
+    const connection = await db.promise().getConnection();
+
+    try {
+
+        const { user_id } = req.params;
+        const { first_name, last_name, email, dept_id, designation, expertise } = req.body;
+
+        if (!first_name || !last_name || !email || !dept_id || !designation || !expertise){
+            return res.status(400).json({
+                message: "All fields are required"
+            });
+        }
+
+        await connection.beginTransaction();
+
+        // ✅ check if user exists
+        const [userCheck] = await connection.query(
+            'SELECT id FROM users WHERE id = ?',
+            [user_id]
+        );
+
+        if (!userCheck.length) {
+            await connection.rollback();
+            return res.status(404).json({
+                message: "Supervisor not found"
+            });
+        }
+
+        // ✅ email duplicate check (ignore current user)
+        const [existing] = await connection.query(
+            'SELECT id FROM users WHERE email = ? AND id != ?',
+            [email, user_id]
+        );
+
+        if (existing.length) {
+            await connection.rollback();
+            return res.status(409).json({
+                message: "Email already exists"
+            });
+        }
+
+        // ✅ update users table
+        await connection.query(`
+            UPDATE users
+            SET first_name = ?, last_name = ?, email = ?
+            WHERE id = ?
+        `, [first_name, last_name, email, user_id]);
+
+        // ✅ update supervisor table
+        await connection.query(`
+            UPDATE supervisors
+            SET dept_id = ?, designation = ?, expertise = ?
+            WHERE user_id = ?
+        `, [dept_id, designation, expertise, user_id]);
+
+        await connection.commit();
+
+        res.json({
+            message: "Supervisor updated successfully"
+        });
+
+    } catch (err) {
+
+        await connection.rollback();
+        console.error(err);
+
+        res.status(500).json({
+            message: "Server Error"
+        });
+
+    } finally {
+        connection.release();
     }
 };
 
@@ -580,6 +767,13 @@ exports.createExaminer = async (req, res) => {
 
         if (!first_name || !last_name || !email || !password || !dept_id || !designation) {
             return res.status(400).json({ message: "All fields required" });
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({
+                message: "Invalid email format"
+            });
         }
 
         await connection.beginTransaction();
@@ -648,5 +842,82 @@ exports.getExaminer = async (req, res) => {
     } catch {
 
         res.status(500).json({ message: "Server Error" });
+    }
+};
+
+exports.updateExaminer = async (req, res) => {
+
+    const connection = await db.promise().getConnection();
+
+    try {
+
+        const { user_id } = req.params;
+        const { first_name, last_name, email, dept_id, designation } = req.body;
+
+        if (!first_name || !last_name || !email || !dept_id) {
+            return res.status(400).json({
+                message: "All fields are required"
+            });
+        }
+
+        await connection.beginTransaction();
+
+        // ✅ check if user exists
+        const [userCheck] = await connection.query(
+            'SELECT id FROM users WHERE id = ?',
+            [user_id]
+        );
+
+        if (!userCheck.length) {
+            await connection.rollback();
+            return res.status(404).json({
+                message: "Examiner not found"
+            });
+        }
+
+        // ✅ email duplicate check (ignore current user)
+        const [existing] = await connection.query(
+            'SELECT id FROM users WHERE email = ? AND id != ?',
+            [email, user_id]
+        );
+
+        if (existing.length) {
+            await connection.rollback();
+            return res.status(409).json({
+                message: "Email already exists"
+            });
+        }
+
+        // ✅ update users table
+        await connection.query(`
+            UPDATE users
+            SET first_name = ?, last_name = ?, email = ?
+            WHERE id = ?
+        `, [first_name, last_name, email, user_id]);
+
+        // ✅ update examiner table
+        await connection.query(`
+            UPDATE examiners
+            SET dept_id = ?, designation = ?
+            WHERE user_id = ?
+        `, [dept_id, designation, user_id]);
+
+        await connection.commit();
+
+        res.json({
+            message: "Examiner updated successfully"
+        });
+
+    } catch (err) {
+
+        await connection.rollback();
+        console.error(err);
+
+        res.status(500).json({
+            message: "Server Error"
+        });
+
+    } finally {
+        connection.release();
     }
 };

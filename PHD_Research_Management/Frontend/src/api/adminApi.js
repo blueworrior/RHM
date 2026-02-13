@@ -52,6 +52,14 @@ export const createDepartment = async (data)=>{
     const res = await axios.post("/admin/departments", data);
     return res.data;
 }
+export const updateDepartment = async (id, data)=>{
+    const res = await axios.put(`/admin/departments/${id}`, data);
+    return res.data;
+};
+export const deleteDepartment = async (id)=>{
+    const res = await axios.delete(`/admin/departments/${id}`);
+    return res.data;
+};
 
 
 // coordinators
@@ -63,15 +71,22 @@ export const createCoordinator = async (data)=>{
     const res = await axios.post("/admin/coordinators", data);
     return res.data;
 }
-
+export const updateCoordinator = async (id, data)=>{
+    const res = await axios.put(`/admin/coordinators/${id}`, data)
+    return res.data;
+}
 
 // supervisors
+export const createSupervisor = async (data)=>{
+    const res = await axios.post("/admin/supervisors", data);
+    return res.data;
+}
 export const getSupervisors = async ()=>{
     const res = await axios.get("/admin/supervisors");
     return res.data;
 }
-export const createSupervisor = async (data)=>{
-    const res = await axios.post("/admin/supervisors", data);
+export const updateSupervisor = async (id, data)=>{
+    const res = await axios.put(`/admin/supervisors/${id}`, data)
     return res.data;
 }
 
@@ -92,4 +107,7 @@ export const createExaminer = async (data)=>{
     const res = await axios.post("/admin/examiners", data);
     return res.data;
 }
-
+export const updateExaminer = async (id, data)=>{
+    const res = await axios.put(`/admin/examiners/${id}`, data)
+    return res.data;
+}
