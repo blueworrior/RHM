@@ -13,10 +13,10 @@ const pool = mysql.createPool({
 });
 
 // optional test
-pool.getConnection((err, connection) => {
-    if (err) throw err;
-    console.log('MySQL Pool connected...');
-    connection.release();
-});
+// pool.getConnection((err, connection) => {
+//     if (err) throw err;
+//     console.log('MySQL Pool connected...');
+//     connection.release();
+// });
 
 module.exports = pool;
