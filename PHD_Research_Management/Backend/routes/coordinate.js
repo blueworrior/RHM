@@ -7,7 +7,7 @@ const role = require('../middleware/roleMiddleware');
 const coordinatorController = require('../controllers/coordinatorController');
 
 // STUDENTS
-// -> 1. create sttudent
+// -> 1. create student
 router.post('/students', auth, role(['coordinator']), coordinatorController.createStudent);
 // -> 2. list students of my department
 router.get('/my-students', auth, role(['coordinator']), coordinatorController.getMyDepartmentStudents);
@@ -22,7 +22,7 @@ router.delete('/students/:student_id', auth, role(['coordinator']), coordinatorC
 router.get('/my-supervisors', auth, role(['coordinator']), coordinatorController.getMyDepartmentSupervisors);
 // -> 7. assign supervisor to student
 router.put('/assign-supervisor', auth, role(['coordinator']), coordinatorController.assignSupervisor);
-// -> 8. remove supervisor
+// -> 8. remove supervisor from student
 router.put('/remove-supervisor', auth, role(['coordinator']), coordinatorController.removeSupervisor);
 
 // -> 9. PUBLICATION (list all my department student )
