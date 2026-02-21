@@ -2670,6 +2670,7 @@ db.query('SELECT * FROM users', (err, results) => {
 --     status enum('active', 'inactive') default 'active',
 --     created_at timestamp default current_timestamp,
 --     is_super_admin BOOLEAN DEFAULT FALSE,
+--     created_by int null,
 --     
 --     foreign key(role_id) references roles(id)
 -- 		on delete restrict

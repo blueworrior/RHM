@@ -24,17 +24,17 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const user = await login(email, password);
+      const { user } = await login(email, password);
       
       // Redirect based on role
       navigate(`/${user.role}`);
       
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid email or password');
-    } finally {
-      setLoading(false);
+      setError(err.message); // display the specific error message
+      setLoading(false);  // stop loading on error
     }
   };
+  
 
   return (
     <div className="login-container">

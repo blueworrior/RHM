@@ -1,105 +1,181 @@
+
 import React from 'react';
+
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import Login from './pages/Login';
-import AdminDashboard from './pages/admin/Dashboard';
-import CoordinatorDashboard from './pages/coordinator/Dashboard';
-import SupervisorDashboard from './pages/supervisor/Dashboard';
-import StudentDashboard from './pages/student/Dashboard';
-import ExaminerDashboard from './pages/examiner/Dashboard';
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ThemeProvider } from './context/ThemeContext';
+import Loading from "./components/Loading";
+import Layout from './components/Layout';
+import Login from "./pages/Login";
+
+//Admin Pages
+import AdminDashboard from "./pages/admin/Dashboard";
+import AdminUsers from './pages/admin/Users';
+import AdminDepartments from './pages/admin/Departments';
+import AdminCoordinators from './pages/admin/Coordinators';
+import AdminSupervisors from './pages/admin/Supervisors';
+import AdminExaminers from './pages/admin/Examiners';
+import AdminStudents from './pages/admin/Students';
+
+import CoordinatorDashboard from "./pages/coordinator/Dashboard";
+import SupervisorDashboard from "./pages/supervisor/Dashboard";
+import StudentDashboard from "./pages/student/Dashboard";
+import ExaminerDashboard from "./pages/examiner/Dashboard";
+
 
 // Protected Route Component
-const ProtectedRoute = ({ children, role }) => {
-  const { user, loading } = useAuth();
+const ProtectedRoute = ({ children, role}) => {
+  const {user, loading} = useAuth();
 
-  if (loading) {
-    return <div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>;
+  if(loading){
+    return <Loading />
   }
 
-  if (!user) {
-    return <Navigate to="/login" />;
+  if(!user){
+    return <Navigate to = "/login" />
   }
 
-  if (role && user.role !== role) {
-    return <Navigate to={`/${user.role}`} />;
+  if(role && user.role !== role){
+    return <Navigate to={`/${user.role}`} />
   }
 
-  return children;
+  return <Layout>{children}</Layout>;
+
 };
 
 function AppRoutes() {
-  const { user, loading } = useAuth();
+  const {user, loading} = useAuth();
 
   if (loading) {
-    return <div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>;
+    return <Loading />
   }
 
-  return (
+  return(
     <BrowserRouter>
       <Routes>
-        <Route 
-          path="/login" 
-          element={!user ? <Login /> : <Navigate to={`/${user.role}`} />} 
+        <Route
+          path="/login"
+          element={!user? <Login/> : <Navigate to={`/${user.role}`} /> }
         />
-
-        <Route 
-          path="/admin" 
+        
+        {/* Admin Routes */}
+        <Route
+          path="/admin"
           element={
-            <ProtectedRoute role="admin">
+            <ProtectedRoute role={"admin"}>
               <AdminDashboard />
             </ProtectedRoute>
+          }
+        />
+        <Route
+          path='/admin/users'
+          element={
+            <ProtectedRoute role={'admin'}>
+              <AdminUsers/>
+            </ProtectedRoute>
+          }
+        />
+        <Route 
+          path="/admin/departments" 
+          element={
+            <ProtectedRoute role="admin">
+              <AdminDepartments />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/coordinators" 
+          element={
+            <ProtectedRoute role="admin">
+              <AdminCoordinators />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+        path="/admin/supervisors" 
+        element={
+          <ProtectedRoute role="admin">
+            <AdminSupervisors />
+          </ProtectedRoute>
+        } 
+        />
+        <Route 
+          path="/admin/examiners" 
+          element={
+            <ProtectedRoute role="admin">
+              <AdminExaminers />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/students" 
+          element={
+            <ProtectedRoute role="admin">
+              <AdminStudents />
+            </ProtectedRoute>
           } 
         />
 
-        <Route 
-          path="/coordinator" 
+
+        {/* Coordinator Routes */}
+        <Route
+          path="/coordinator"
           element={
-            <ProtectedRoute role="coordinator">
+            <ProtectedRoute role={"coordinator"}>
               <CoordinatorDashboard />
             </ProtectedRoute>
-          } 
+          }
         />
 
-        <Route 
-          path="/supervisor" 
+
+        {/* Supervisor Routes */}
+        <Route
+          path="/supervisor"
           element={
-            <ProtectedRoute role="supervisor">
+            <ProtectedRoute role={"supervisor"}>
               <SupervisorDashboard />
             </ProtectedRoute>
-          } 
+          }
         />
 
-        <Route 
-          path="/student" 
+
+        {/* Student Routes */}
+        <Route
+          path="/student"
           element={
-            <ProtectedRoute role="student">
+            <ProtectedRoute role={"student"}>
               <StudentDashboard />
             </ProtectedRoute>
-          } 
+          }
         />
 
-        <Route 
-          path="/examiner" 
+
+        {/* Examiner Routes */}
+        <Route
+          path="/examiner"
           element={
-            <ProtectedRoute role="examiner">
+            <ProtectedRoute role={"examiner"}>
               <ExaminerDashboard />
             </ProtectedRoute>
-          } 
+          }
         />
 
-        <Route 
-          path="/" 
-          element={user ? <Navigate to={`/${user.role}`} /> : <Navigate to="/login" />} 
+        <Route
+          path="/"
+          element={user ? <Navigate to={`/${user.role}`}/> : <Navigate to={'/login'}/> }
         />
+
       </Routes>
     </BrowserRouter>
   );
-}
+};
 
-export default function App() {
+export default function App(){
   return (
-    <AuthProvider>
-      <AppRoutes />
-    </AuthProvider>
-  );
+    <ThemeProvider>
+      <AuthProvider>
+        <AppRoutes/>
+      </AuthProvider>
+    </ThemeProvider>
+  )
 }

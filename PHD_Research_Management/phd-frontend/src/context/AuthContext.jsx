@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import api from '../services/api';
 
 const AuthContext = createContext(null);
@@ -21,16 +21,31 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    const response = await api.post('/api/auth/login', { email, password });
-    const { token, user } = response.data;
-    
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-    
-    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    setUser(user);
-    
-    return user;
+
+    try{
+      const response = await api.post('/api/auth/login', { email, password });
+      const { token, user } = response.data;
+      
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      setUser(user);
+
+      return { success: true, user };
+    } catch (error){
+      
+      if(error.code === 'ERR_NETWORK' || !error.response){
+        throw new Error('Cannot connect to server');
+      }
+
+      if(error.response?.status === 401 || error.response?.status === 400){
+        throw new Error('Invalid email or password');
+      }
+
+      throw new Error(error.response?.data?.message || 'Login failed. Please try again.')
+    }
   };
 
   const logout = () => {

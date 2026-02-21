@@ -1,7 +1,7 @@
 import React from "react";
 import { useAuth } from "../../context/AuthContext";
 
-const SpervisorDashboard = () => {
+const SupervisorDashboard = () => {
     const { user, logout } = useAuth();
 
     return(
@@ -15,4 +15,4 @@ const SpervisorDashboard = () => {
     );
 };
 
-export default SpervisorDashboard;
+export default SupervisorDashboard;
