@@ -17,25 +17,32 @@ import AdminSupervisors from './pages/admin/Supervisors';
 import AdminExaminers from './pages/admin/Examiners';
 import AdminStudents from './pages/admin/Students';
 
+// Coordinator Pages
 import CoordinatorDashboard from "./pages/coordinator/Dashboard";
+import CoordinatorStudents from './pages/coordinator/Student';
+import CoordinatorSupervisors from './pages/coordinator/Supervisor';
+import CoordinatorPublications from './pages/coordinator/Publications';
+import CoordinatorThesis from './pages/coordinator/Thesis';
+
+// Other Pages
 import SupervisorDashboard from "./pages/supervisor/Dashboard";
 import StudentDashboard from "./pages/student/Dashboard";
 import ExaminerDashboard from "./pages/examiner/Dashboard";
 
 
 // Protected Route Component
-const ProtectedRoute = ({ children, role}) => {
-  const {user, loading} = useAuth();
+const ProtectedRoute = ({ children, role }) => {
+  const { user, loading } = useAuth();
 
-  if(loading){
+  if (loading) {
     return <Loading />
   }
 
-  if(!user){
-    return <Navigate to = "/login" />
+  if (!user) {
+    return <Navigate to="/login" />
   }
 
-  if(role && user.role !== role){
+  if (role && user.role !== role) {
     return <Navigate to={`/${user.role}`} />
   }
 
@@ -44,137 +51,61 @@ const ProtectedRoute = ({ children, role}) => {
 };
 
 function AppRoutes() {
-  const {user, loading} = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) {
     return <Loading />
   }
 
-  return(
+  return (
     <BrowserRouter>
       <Routes>
-        <Route
-          path="/login"
-          element={!user? <Login/> : <Navigate to={`/${user.role}`} /> }
-        />
-        
+
+        {/* Login Routes */}
+        <Route path="/login" element={!user ? <Login /> : <Navigate to={`/${user.role}`} />} />
+
         {/* Admin Routes */}
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute role={"admin"}>
-              <AdminDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path='/admin/users'
-          element={
-            <ProtectedRoute role={'admin'}>
-              <AdminUsers/>
-            </ProtectedRoute>
-          }
-        />
-        <Route 
-          path="/admin/departments" 
-          element={
-            <ProtectedRoute role="admin">
-              <AdminDepartments />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/admin/coordinators" 
-          element={
-            <ProtectedRoute role="admin">
-              <AdminCoordinators />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-        path="/admin/supervisors" 
-        element={
-          <ProtectedRoute role="admin">
-            <AdminSupervisors />
-          </ProtectedRoute>
-        } 
-        />
-        <Route 
-          path="/admin/examiners" 
-          element={
-            <ProtectedRoute role="admin">
-              <AdminExaminers />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/admin/students" 
-          element={
-            <ProtectedRoute role="admin">
-              <AdminStudents />
-            </ProtectedRoute>
-          } 
-        />
+        <Route path="/admin" element={<ProtectedRoute role={"admin"}><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/admin/users" element={<ProtectedRoute role={'admin'}><AdminUsers /></ProtectedRoute>} />
+        <Route path="/admin/departments" element={<ProtectedRoute role="admin"><AdminDepartments /></ProtectedRoute>} />
+        <Route path="/admin/coordinators" element={<ProtectedRoute role="admin"><AdminCoordinators /></ProtectedRoute>} />
+        <Route path="/admin/supervisors" element={<ProtectedRoute role="admin"><AdminSupervisors /></ProtectedRoute>} />
+        <Route path="/admin/examiners" element={<ProtectedRoute role="admin"><AdminExaminers /></ProtectedRoute>} />
+        <Route path="/admin/students" element={<ProtectedRoute role="admin"><AdminStudents /></ProtectedRoute>} />
 
 
         {/* Coordinator Routes */}
-        <Route
-          path="/coordinator"
-          element={
-            <ProtectedRoute role={"coordinator"}>
-              <CoordinatorDashboard />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/coordinator" element={<ProtectedRoute role={"coordinator"}> <CoordinatorDashboard/> </ProtectedRoute>}/>
+        <Route path='/coordinator/students' element={<ProtectedRoute role={"coordinator"}> <CoordinatorStudents/> </ProtectedRoute>}/>
+        <Route path='/coordinator/supervisors' element={<ProtectedRoute role={"coordinator"}> <CoordinatorSupervisors/> </ProtectedRoute>}/>
+        <Route path='/coordinator/publications' element={<ProtectedRoute role={"coordinator"}> <CoordinatorPublications/> </ProtectedRoute>}/>
+        <Route path='/coordinator/thesis' element={<ProtectedRoute role={"coordinator"}> <CoordinatorThesis/> </ProtectedRoute>}/>
 
 
         {/* Supervisor Routes */}
-        <Route
-          path="/supervisor"
-          element={
-            <ProtectedRoute role={"supervisor"}>
-              <SupervisorDashboard />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/supervisor" element={<ProtectedRoute role={"supervisor"}><SupervisorDashboard /></ProtectedRoute>} />
 
 
         {/* Student Routes */}
-        <Route
-          path="/student"
-          element={
-            <ProtectedRoute role={"student"}>
-              <StudentDashboard />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/student" element={<ProtectedRoute role={"student"}><StudentDashboard /></ProtectedRoute>} />
 
 
         {/* Examiner Routes */}
-        <Route
-          path="/examiner"
-          element={
-            <ProtectedRoute role={"examiner"}>
-              <ExaminerDashboard />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/examiner" element={<ProtectedRoute role={"examiner"}><ExaminerDashboard /></ProtectedRoute>} />
 
-        <Route
-          path="/"
-          element={user ? <Navigate to={`/${user.role}`}/> : <Navigate to={'/login'}/> }
-        />
+        <Route path="/" element={user ? <Navigate to={`/${user.role}`} /> : <Navigate to={'/login'} />} />
 
       </Routes>
+
     </BrowserRouter>
   );
 };
 
-export default function App(){
+export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <AppRoutes/>
+        <AppRoutes />
       </AuthProvider>
     </ThemeProvider>
   )

@@ -39,6 +39,7 @@ exports.createAdmin = async (req, res) => {
 
         if (existing.length) {
             await connection.rollback();
+            connection.release(); // release connection
             return res.status(409).json({ message: "Email already exists" });
         }
 
@@ -402,6 +403,7 @@ exports.createCoordinator = async (req, res) => {
 
         if (existing.length > 0) {
             await connection.rollback();
+            connection.release(); // release connection
             return res.status(409).json({ message: "Email already exists" });
         }
 
@@ -487,6 +489,7 @@ exports.updateCoordinator = async (req, res) => {
 
         if (!userCheck.length) {
             await connection.rollback();
+            connection.release(); // release connection
             return res.status(404).json({
                 message: "Coordinator not found"
             });
@@ -500,6 +503,7 @@ exports.updateCoordinator = async (req, res) => {
 
         if (existing.length) {
             await connection.rollback();
+            connection.release(); // release connection
             return res.status(409).json({
                 message: "Email already exists"
             });
@@ -579,6 +583,7 @@ exports.createSupervisor = async (req, res) => {
 
         if (existing.length > 0) {
             await connection.rollback();
+            connection.release(); // release connection
             return res.status(409).json({ message: "Email already exists" });
         }
 
@@ -653,7 +658,27 @@ exports.updateSupervisor = async (req, res) => {
         const { user_id } = req.params;
         const { first_name, last_name, email, dept_id, designation, expertise } = req.body;
 
-        if (!first_name || !last_name || !email || !dept_id || !designation || !expertise){
+        // ✅ Check if supervisor has assigned students
+        const [[studentCheck]] = await connection.query(
+            'SELECT COUNT(*) as count FROM students WHERE supervisor_id = (SELECT id FROM supervisors WHERE user_id = ?)',
+            [user_id]
+        );
+
+        if (studentCheck.count > 0) {
+            // ✅ Check if department is changing
+            const [[currentDept]] = await connection.query(
+                'SELECT dept_id FROM supervisors WHERE user_id = ?',
+                [user_id]
+            );
+
+            if (currentDept.dept_id != dept_id) {
+                return res.status(400).json({
+                    message: `Cannot change department. This supervisor has ${studentCheck.count} assigned student(s). Remove students first.`
+                });
+            }
+        }
+
+        if (!first_name || !last_name || !email || !dept_id || !designation || !expertise) {
             return res.status(400).json({
                 message: "All fields are required"
             });
@@ -669,6 +694,7 @@ exports.updateSupervisor = async (req, res) => {
 
         if (!userCheck.length) {
             await connection.rollback();
+            connection.release(); // release connection
             return res.status(404).json({
                 message: "Supervisor not found"
             });
@@ -682,6 +708,7 @@ exports.updateSupervisor = async (req, res) => {
 
         if (existing.length) {
             await connection.rollback();
+            connection.release(); // release connection
             return res.status(409).json({
                 message: "Email already exists"
             });
@@ -785,6 +812,7 @@ exports.createExaminer = async (req, res) => {
 
         if (existing.length > 0) {
             await connection.rollback();
+            connection.release(); // release connection
             return res.status(409).json({ message: "Email already exists" });
         }
 
@@ -870,6 +898,7 @@ exports.updateExaminer = async (req, res) => {
 
         if (!userCheck.length) {
             await connection.rollback();
+            connection.release(); // release connection
             return res.status(404).json({
                 message: "Examiner not found"
             });
@@ -883,6 +912,7 @@ exports.updateExaminer = async (req, res) => {
 
         if (existing.length) {
             await connection.rollback();
+            connection.release(); // release connection
             return res.status(409).json({
                 message: "Email already exists"
             });

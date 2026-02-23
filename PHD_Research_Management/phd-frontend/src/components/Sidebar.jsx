@@ -7,7 +7,9 @@ import {
     UserCog,
     BookOpen,
     GraduationCap,
-    UsersRound
+    UsersRound,
+    Book,
+    FileText
 } from 'lucide-react';
 import { useAuth } from "../context/AuthContext";
 import logo from '../assets/logo.png';
@@ -16,6 +18,7 @@ const Sidebar = () => {
     const { user } = useAuth();
     const location = useLocation();
 
+    // admin navigations
     const adminNav = [
         { name: 'Dashboard', path: '/admin', icon: LayoutDashboard, exact: true },
         { name: 'Users', path: '/admin/users', icon: UsersRound },
@@ -25,6 +28,26 @@ const Sidebar = () => {
         { name: 'Examiners', path: '/admin/examiners', icon: BookOpen },
         { name: 'Students', path: '/admin/students', icon: GraduationCap }
     ];
+
+    // Coordintor navigations
+    const coordinatorNav = [
+        { name: 'Dashboard', path: '/coordinator', icon: LayoutDashboard, exact: true },
+        { name: 'Students', path: '/coordinator/students', icon: GraduationCap },
+        { name: 'Supervisors', path: '/coordinator/supervisors', icon: Users },
+        { name: 'Publications', path: '/coordinator/publications', icon: BookOpen },
+        { name: 'Thesis', path: '/coordinator/thesis', icon: Book }
+    ];
+
+    // Select navigation based on role
+    const navigation = {
+        admin: adminNav,
+        coordinator: coordinatorNav,
+        supervisor: [],
+        student: [],
+        examiner: []
+    };
+
+    const items = navigation[user?.role] || [];
 
     const isActive = (path, exact) => {
         if (exact) {
@@ -45,11 +68,11 @@ const Sidebar = () => {
             </div>
 
             <nav className="sidebar-nav">
-                {adminNav.map((item) => (
+                {items.map((item) => (
                     <Link
                         key={item.path}
                         to={item.path}
-                        className={isActive(item.path, item.exact)? 'active': ''}
+                        className={isActive(item.path, item.exact) ? 'active' : ''}
                     >
                         <item.icon size={20} />
                         {item.name}

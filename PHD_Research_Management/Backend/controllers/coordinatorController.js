@@ -34,6 +34,7 @@ exports.createStudent = async (req, res) => {
 
         if (emailCheck.length > 0) {
             await conn.rollback();
+            conn.release(); // release connection
             return res.status(409).json({ message: "Email already exists" });
         }
 
@@ -45,6 +46,7 @@ exports.createStudent = async (req, res) => {
 
         if (regCheck.length > 0) {
             await conn.rollback();
+            conn.release(); // release connection
             return res.status(409).json({ message: "Registration number already exists" });
         }
 
@@ -181,6 +183,8 @@ exports.getUnassignedStudents = async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server Error" });
+    } finally {
+        connection.release();
     }
 };
 
@@ -227,6 +231,8 @@ exports.updateStudent = async (req, res) => {
 
         console.error(err);
         res.status(500).json({ message: "Server Error" });
+    } finally {
+        connection.release();
     }
 };
 
@@ -252,6 +258,7 @@ exports.deleteStudent = async (req, res) => {
 
         if (!coord) {
             await conn.rollback();
+            conn.release(); // release connection
             return res.status(403).json({ message: "Not a coordinator" });
         }
 
@@ -263,6 +270,7 @@ exports.deleteStudent = async (req, res) => {
 
         if (!student) {
             await conn.rollback();
+            conn.release(); // release connection
             return res.status(403).json({ message: "You cannot delete this student" });
         }
 
@@ -324,6 +332,8 @@ exports.getMyDepartmentSupervisors = async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server Error" });
+    } finally {
+        connection.release();
     }
 };
 
@@ -386,6 +396,8 @@ exports.assignSupervisor = async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server Error" });
+    } finally {
+        connection.release();
     }
 };
 
@@ -432,6 +444,8 @@ exports.removeSupervisor = async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server Error" });
+    } finally {
+        connection.release();
     }
 };
 
@@ -478,6 +492,97 @@ exports.getDepartmentPublications = async (req, res) => {
 };
 
 //////////////////////////////////////////////////////////////
+// GET APPROVED THESIS (WAITING FOR EXAMINER ASSIGNMENT)
+//////////////////////////////////////////////////////////////
+exports.getApprovedTheses = async (req, res) => {
+    const connection = await db.promise().getConnection();
+
+    try {
+        const user_id = req.user.id;
+
+        const [[coord]] = await connection.query(
+            'SELECT dept_id FROM coordinators WHERE user_id = ?',
+            [user_id]
+        );
+
+        if (!coord)
+            return res.status(403).json({ message: "Not a coordinator" });
+
+        // Get thesis that are approved by supervisor but not yet under examination
+        const [rows] = await connection.query(`
+            SELECT 
+                t.id AS thesis_id,
+                t.title,
+                t.status,
+                t.version,
+                t.submitted_at,
+                s.registration_no,
+                CONCAT(u.first_name,' ',u.last_name) AS student_name,
+                COUNT(ea.id) AS assigned_examiners
+            FROM thesis t
+            JOIN students s ON t.student_id = s.id
+            JOIN users u ON s.user_id = u.id
+            LEFT JOIN examiner_assignments ea ON ea.thesis_id = t.id AND ea.is_active = TRUE
+            WHERE s.dept_id = ?
+            AND t.status = 'Approved'
+            AND t.is_locked = FALSE
+            GROUP BY t.id
+            ORDER BY t.submitted_at DESC
+        `, [coord.dept_id]);
+
+        res.json(rows);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Server Error" });
+    } finally {
+        connection.release();
+    }
+};
+
+//////////////////////////////////////////////////////////////
+// GET DEPARTMENT EXAMINERS
+//////////////////////////////////////////////////////////////
+exports.getDepartmentExaminers = async (req, res) => {
+    const connection = await db.promise().getConnection();
+
+    try {
+        const user_id = req.user.id;
+
+        const [[coord]] = await connection.query(
+            'SELECT dept_id FROM coordinators WHERE user_id = ?',
+            [user_id]
+        );
+
+        if (!coord)
+            return res.status(403).json({ message: "Not a coordinator" });
+
+        const [rows] = await connection.query(`
+            SELECT
+                e.id AS examiner_id,
+                u.id AS user_id,
+                u.first_name,
+                u.last_name,
+                e.designation,
+                d.name AS department
+            FROM examiners e
+            JOIN users u ON e.user_id = u.id
+            JOIN departments d ON e.dept_id = d.id
+            WHERE e.dept_id = ?
+            ORDER BY u.first_name
+        `, [coord.dept_id]);
+
+        res.json(rows);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Server Error" });
+    } finally {
+        connection.release();
+    }
+};
+
+//////////////////////////////////////////////////////////////
 // ASSIGN EXAMINER (FULL TRANSACTION)
 //////////////////////////////////////////////////////////////
 exports.assignExaminer = async (req, res) => {
@@ -498,6 +603,7 @@ exports.assignExaminer = async (req, res) => {
 
         if (!coord) {
             await conn.rollback();
+            conn.release(); // release connection
             return res.status(403).json({ message: "Not a coordinator" });
         }
 
@@ -515,6 +621,7 @@ exports.assignExaminer = async (req, res) => {
 
         if (!thesis.length) {
             await conn.rollback();
+            conn.release(); // release connection
             return res.status(409).json({ message: "Invalid thesis" });
         }
 
@@ -526,6 +633,7 @@ exports.assignExaminer = async (req, res) => {
 
         if (!examiner) {
             await conn.rollback();
+            conn.release(); // release connection
             return res.status(409).json({ message: "Examiner not in department" });
         }
 
@@ -538,6 +646,7 @@ exports.assignExaminer = async (req, res) => {
 
         if (count.total >= 3) {
             await conn.rollback();
+            conn.release(); // release connection
             return res.status(409).json({ message: "Max 3 examiners allowed" });
         }
         const [[duplicate]] = await conn.query(
@@ -549,6 +658,7 @@ exports.assignExaminer = async (req, res) => {
 
         if (duplicate) {
             await conn.rollback();
+            conn.release(); // release connection
             return res.status(409).json({ message: "Same examiner already assigned to this thesis" });
         }
 
@@ -632,6 +742,8 @@ exports.getEvaluatedTheses = async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server Error" });
+    } finally {
+        connection.release();
     }
 };
 
@@ -682,6 +794,8 @@ exports.getThesisEvaluations = async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server Error" });
+    } finally {
+        connection.release();
     }
 };
 
@@ -725,6 +839,8 @@ exports.getReadyThesis = async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server Error" });
+    } finally {
+        connection.release();
     }
 };
 
@@ -755,6 +871,7 @@ exports.finalizeThesis = async (req, res) => {
 
         if (!coord) {
             await conn.rollback();
+            conn.release(); // release connection
             return res.status(403).json({ message: "Not a coordinator" });
         }
 
@@ -770,6 +887,7 @@ exports.finalizeThesis = async (req, res) => {
 
         if (!thesis) {
             await conn.rollback();
+            conn.release(); // release connection
             return res.status(403).json({ message: "Invalid thesis state" });
         }
 
@@ -810,5 +928,47 @@ exports.finalizeThesis = async (req, res) => {
 
     } finally {
         conn.release();
+    }
+};
+
+//////////////////////////////////////////////////////////////
+// GET DEPARTMENT EXAMINERS
+//////////////////////////////////////////////////////////////
+exports.getDepartmentExaminers = async (req, res) => {
+    const connection = await db.promise().getConnection();
+
+    try {
+        const user_id = req.user.id;
+
+        const [[coord]] = await connection.query(
+            'SELECT dept_id FROM coordinators WHERE user_id = ?',
+            [user_id]
+        );
+
+        if (!coord)
+            return res.status(403).json({ message: "Not a coordinator" });
+
+        const [rows] = await connection.query(`
+            SELECT
+                e.id AS examiner_id,
+                u.id AS user_id,
+                u.first_name,
+                u.last_name,
+                e.designation,
+                d.name AS department
+            FROM examiners e
+            JOIN users u ON e.user_id = u.id
+            JOIN departments d ON e.dept_id = d.id
+            WHERE e.dept_id = ?
+            ORDER BY u.first_name
+        `, [coord.dept_id]);
+
+        res.json(rows);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Server Error" });
+    } finally {
+        connection.release();
     }
 };

@@ -94,7 +94,8 @@ exports.evaluateThesis = async (req, res) => {
         const [existingGrades] = await connection.query(checkSql, [thesis_id, examiner_id, version]);
         
         if (existingGrades.length > 0) {
-            await connection.rollback(); 
+            await connection.rollback();
+            connection.release();   // release connection
             return res.status(409).json({ message: "Already evaluated for this version" });
         }
 
