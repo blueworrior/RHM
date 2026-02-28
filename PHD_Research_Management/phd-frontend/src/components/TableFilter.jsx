@@ -245,20 +245,6 @@ const TableFilter = ({
           </div>
         )}
 
-        {/* Clear All Button */}
-        {(filters.length > 0 && Object.keys(currentFilters).some(key => currentFilters[key])) && (
-          <button
-            onClick={() => {
-              filters.forEach(filter => onFilterChange(filter.key, ''));
-              setSearchValue('');
-              if (onSearch) onSearch('');
-            }}
-            className="btn btn-outline"
-            style={{ width: '100%', marginTop: '16px', justifyContent: 'center' }}
-          >
-            Clear All Filters
-          </button>
-        )}
       </div>
     </>
   );
