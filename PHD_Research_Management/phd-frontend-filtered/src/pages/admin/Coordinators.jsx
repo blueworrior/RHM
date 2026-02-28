@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2 } from 'lucide-react';
+import { Plus, Edit2, Filter } from 'lucide-react';
 import api from '../../services/api';
 import Modal from '../../components/Modal';
 import Loading from '../../components/Loading';
+import TableFilter from '../../components/TableFilter';
+import useTableFilter from '../../hooks/useTableFilter';
 
 const Coordinators = () => {
     const [coordinators, setCoordinators] = useState([]);
@@ -14,6 +16,24 @@ const Coordinators = () => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
+    // FILTER HOOK
+    const {
+        filteredData: filteredCoordinators,
+        handleSort,
+        handleSearch,
+        handleFilterChange,
+        filters,
+        sortConfig,
+        resetFilters
+    } = useTableFilter(coordinators, ['first_name', 'last_name', 'email', 'department']);
+
+    // FILTER MODAL STATE
+    const [filterModal, setFilterModal] = useState({
+        isOpen: false,
+        columnKey: '',
+        columnName: ''
+    });
+
     const [formData, setFormData] = useState({
         first_name: '',
         last_name: '',
@@ -23,7 +43,6 @@ const Coordinators = () => {
         dept_id: ''
     });
 
-    // for confirm password helper
     const passwordsMatch = formData.password && formData.confirmPassword &&
         formData.password === formData.confirmPassword;
 
@@ -46,12 +65,27 @@ const Coordinators = () => {
         }
     };
 
+    const openFilterModal = (columnKey, columnName) => {
+        setFilterModal({
+            isOpen: true,
+            columnKey,
+            columnName
+        });
+    };
+
+    const closeFilterModal = () => {
+        setFilterModal({
+            isOpen: false,
+            columnKey: '',
+            columnName: ''
+        });
+    };
+
     const handleCreate = async (e) => {
         e.preventDefault();
         setError('');
         setSuccess('');
 
-        // check both input include same password
         if (formData.password !== formData.confirmPassword) {
             setError('Passwords do not match');
             return;
@@ -60,7 +94,7 @@ const Coordinators = () => {
         try {
             await api.post('/api/admin/coordinators', formData);
             setSuccess('Coordinator created successfully');
-            setFormData({ first_name: '', last_name: '', email: '', password: '', dept_id: '' });
+            setFormData({ first_name: '', last_name: '', email: '', password: '', confirmPassword: '', dept_id: '' });
             setIsCreateModalOpen(false);
             fetchData();
         } catch (err) {
@@ -83,7 +117,7 @@ const Coordinators = () => {
             setSuccess('Coordinator updated successfully');
             setIsEditModalOpen(false);
             setSelectedCoord(null);
-            setFormData({ first_name: '', last_name: '', email: '', password: '', dept_id: '' });
+            setFormData({ first_name: '', last_name: '', email: '', password: '', confirmPassword: '', dept_id: '' });
             fetchData();
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to update coordinator');
@@ -98,7 +132,8 @@ const Coordinators = () => {
             last_name: coord.last_name,
             email: coord.email,
             dept_id: dept?.id || '',
-            password: ''
+            password: '',
+            confirmPassword: ''
         });
         setIsEditModalOpen(true);
     };
@@ -123,33 +158,94 @@ const Coordinators = () => {
             {error && <div className="error-message">{error}</div>}
             {success && <div className="success-message">{success}</div>}
 
+            {/* Clear Filters Banner */}
+            {(Object.keys(filters).some(key => filters[key]) || sortConfig.key) && (
+                <div style={{
+                    marginBottom: '16px',
+                    padding: '12px 16px',
+                    background: 'rgba(177, 18, 38, 0.1)',
+                    border: '2px solid var(--primary)',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                }}>
+                    <div>
+                        <p style={{ fontSize: '14px', fontWeight: '600', color: 'var(--primary)', margin: 0 }}>
+                            Filters Active
+                        </p>
+                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+                            {Object.keys(filters).filter(key => filters[key]).length} filter(s) applied
+                            {sortConfig.key && ` • Sorted by ${sortConfig.key}`}
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => {
+                            resetFilters();
+                            setSuccess('All filters cleared');
+                            setTimeout(() => setSuccess(''), 3000);
+                        }}
+                        className="btn btn-outline"
+                        style={{ padding: '8px 16px' }}
+                    >
+                        Clear All Filters
+                    </button>
+                </div>
+            )}
+
             <div className="table-container">
                 <table>
                     <thead>
                         <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Department</th>
+                            <th>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+                                    onClick={() => openFilterModal('first_name', 'Name')}>
+                                    Name
+                                    <Filter size={14} style={{ color: 'var(--text-secondary)' }} />
+                                </div>
+                            </th>
+                            <th>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+                                    onClick={() => openFilterModal('email', 'Email')}>
+                                    Email
+                                    <Filter size={14} style={{ color: 'var(--text-secondary)' }} />
+                                </div>
+                            </th>
+                            <th>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+                                    onClick={() => openFilterModal('department', 'Department')}>
+                                    Department
+                                    <Filter size={14} style={{ color: 'var(--text-secondary)' }} />
+                                </div>
+                            </th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {coordinators.map((coord) => (
-                            <tr key={coord.user_id}>
-                                <td>{coord.first_name} {coord.last_name}</td>
-                                <td>{coord.email}</td>
-                                <td>{coord.department}</td>
-                                <td>
-                                    <button
-                                        onClick={() => openEditModal(coord)}
-                                        className="btn btn-outline"
-                                        style={{ padding: '6px 12px' }}
-                                    >
-                                        <Edit2 size={16} />
-                                    </button>
+                        {filteredCoordinators.length === 0 ? (
+                            <tr>
+                                <td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
+                                    No coordinators found
                                 </td>
                             </tr>
-                        ))}
+                        ) : (
+                            filteredCoordinators.map((coord) => (
+                                <tr key={coord.user_id}>
+                                    <td>{coord.first_name} {coord.last_name}</td>
+                                    <td>{coord.email}</td>
+                                    <td>{coord.department}</td>
+                                    <td>
+                                        <button
+                                            onClick={() => openEditModal(coord)}
+                                            className="btn btn-outline"
+                                            style={{ padding: '6px 12px' }}
+                                        >
+                                            <Edit2 size={16} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
                     </tbody>
                 </table>
             </div>
@@ -159,7 +255,7 @@ const Coordinators = () => {
                 isOpen={isCreateModalOpen}
                 onClose={() => {
                     setIsCreateModalOpen(false);
-                    setFormData({ first_name: '', last_name: '', email: '', password: '', dept_id: '' });
+                    setFormData({ first_name: '', last_name: '', email: '', password: '', confirmPassword: '', dept_id: '' });
                     setError('');
                 }}
                 title="Create New Coordinator"
@@ -261,7 +357,7 @@ const Coordinators = () => {
                 onClose={() => {
                     setIsEditModalOpen(false);
                     setSelectedCoord(null);
-                    setFormData({ first_name: '', last_name: '', email: '', password: '', dept_id: '' });
+                    setFormData({ first_name: '', last_name: '', email: '', password: '', confirmPassword: '', dept_id: '' });
                     setError('');
                 }}
                 title="Edit Coordinator"
@@ -323,6 +419,19 @@ const Coordinators = () => {
                     </div>
                 </form>
             </Modal>
+
+            {/* Table Filter Modal */}
+            <TableFilter
+                isOpen={filterModal.isOpen}
+                onClose={closeFilterModal}
+                columnName={filterModal.columnName}
+                onSort={(direction) => handleSort(filterModal.columnKey, direction)}
+                onSearch={handleSearch}
+                searchPlaceholder={`Search ${filterModal.columnName.toLowerCase()}...`}
+                filters={[]}
+                onFilterChange={handleFilterChange}
+                currentFilters={filters}
+            />
         </div>
     );
 };
