@@ -84,3 +84,20 @@ exports.login = async (req, res) => {
         });
     }
 };
+
+// Verify token endpoint
+exports.verifyToken = async (req, res) => {
+    try {
+        // If we reach here, it means the token was valid (authMiddleware verified it)
+        res.json({ 
+            valid: true, 
+            user: {
+                id: req.user.id,
+                role: req.user.role,
+                is_super_admin: req.user.is_super_admin
+            }
+        });
+    } catch (error) {
+        res.status(401).json({ message: 'Invalid token' });
+    }
+};

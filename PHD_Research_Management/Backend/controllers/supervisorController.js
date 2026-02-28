@@ -181,7 +181,7 @@ exports.getMyStudentThesis = async (req, res) => {
         if (supervisors.length === 0) return res.status(403).json({ message: "Not a supervisor" });
 
         const sql = `
-            SELECT t.id AS thesis_id, t.title, t.file_path, t.status, t.submitted_at,
+            SELECT t.id AS thesis_id, t.title,t.version, t.file_path, t.status, t.submitted_at,
                    s.id AS student_id, s.registration_no, CONCAT(u.first_name,' ',u.last_name) AS student_name
             FROM thesis t
             JOIN students s ON t.student_id = s.id

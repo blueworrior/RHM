@@ -22,7 +22,7 @@ exports.submitProposal = async (req, res) => {
             deleteFile(filePathToDelete); // Delete if title is missing
             return res.status(409).json({ message: "Title is required" });
 
-        } 
+        }
 
         const file_path = 'uploads/proposals/' + req.file.filename;
 
@@ -90,11 +90,33 @@ exports.getMyProposalStatus = async (req, res) => {
         if (students.length === 0) return res.status(403).json({ message: "Not a student" });
 
         const sql = `
-            SELECT p.id AS proposal_id, p.title, p.status, p.submitted_at,
-                   a.status AS decision_status, a.remarks, a.approved_at
+            SELECT 
+                p.id AS proposal_id, 
+                p.title, 
+                p.status, 
+                p.submitted_at,
+                latest_approval.decision_status,
+                latest_approval.remarks,
+                latest_approval.approved_at,
+                latest_approval.decided_by
             FROM proposals p
-            LEFT JOIN approvals a ON a.reference_type = 'proposal' AND a.reference_id = p.id
-            AND a.id = (SELECT MAX(id) FROM approvals WHERE reference_type = 'proposal' AND reference_id = p.id)
+            LEFT JOIN (
+                SELECT 
+                    a.reference_id,
+                    a.status AS decision_status,
+                    a.remarks,
+                    a.approved_at,
+                    CONCAT(u.first_name, ' ', u.last_name) AS decided_by
+                FROM approvals a
+                INNER JOIN (
+                    SELECT reference_id, MAX(id) AS max_id
+                    FROM approvals
+                    WHERE reference_type = 'proposal'
+                    GROUP BY reference_id
+                ) latest ON a.id = latest.max_id
+                LEFT JOIN users u ON a.approved_by = u.id
+                WHERE a.reference_type = 'proposal'
+            ) latest_approval ON latest_approval.reference_id = p.id
             WHERE p.student_id = ?
             ORDER BY p.submitted_at DESC`;
 
@@ -121,14 +143,14 @@ exports.submitProgressReport = async (req, res) => {
         if (!semester) {
             deleteFile(filePathToDelete);
             return res.status(400).json({ message: "Semester is Missing" });
-        } 
+        }
 
         const [students] = await connection.query(stdsql, [req.user.id]);
         if (students.length === 0) {
             deleteFile(filePathToDelete);
             return res.status(403).json({ message: "Not a Student" });
         }
-        
+
         const student_id = students[0].id;
         const file_path = 'uploads/progress_reports/' + req.file.filename;
 
@@ -162,6 +184,54 @@ exports.getMyProgressReport = async (req, res) => {
         if (students.length === 0) return res.status(403).json({ message: "Not a Student" });
 
         const sql = `SELECT id, semester, status, submitted_at FROM progress_reports WHERE student_id = ? ORDER BY submitted_at DESC`;
+        const [rows] = await connection.query(sql, [students[0].id]);
+        res.json(rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Server Error" });
+    } finally {
+        connection.release();
+    }
+};
+
+// 3. Get Progress Reports with Status & Remarks
+exports.getMyProgressReportStatus = async (req, res) => {
+    const connection = await db.promise().getConnection();
+    try {
+        const [students] = await connection.query(stdsql, [req.user.id]);
+        if (students.length === 0) return res.status(403).json({ message: "Not a Student" });
+
+        const sql = `
+            SELECT 
+                pr.id AS report_id,
+                pr.semester,
+                pr.status,
+                pr.submitted_at,
+                latest_approval.decision_status,
+                latest_approval.remarks,
+                latest_approval.approved_at,
+                latest_approval.decided_by
+            FROM progress_reports pr
+            LEFT JOIN (
+                SELECT 
+                    a.reference_id,
+                    a.status AS decision_status,
+                    a.remarks,
+                    a.approved_at,
+                    CONCAT(u.first_name, ' ', u.last_name) AS decided_by
+                FROM approvals a
+                INNER JOIN (
+                    SELECT reference_id, MAX(id) AS max_id
+                    FROM approvals
+                    WHERE reference_type = 'report'
+                    GROUP BY reference_id
+                ) latest ON a.id = latest.max_id
+                LEFT JOIN users u ON a.approved_by = u.id
+                WHERE a.reference_type = 'report'
+            ) latest_approval ON latest_approval.reference_id = pr.id
+            WHERE pr.student_id = ?
+            ORDER BY pr.submitted_at DESC;`;
+
         const [rows] = await connection.query(sql, [students[0].id]);
         res.json(rows);
     } catch (err) {
@@ -230,14 +300,14 @@ exports.submitThesis = async (req, res) => {
         }
 
         const [students] = await connection.query(stdsql, [req.user.id]);
-        if (students.length === 0){
+        if (students.length === 0) {
             deleteFile(filePathToDelete);
             return res.status(403).json({ message: "Not a student" });
         }
 
         const student_id = students[0].id;
         const [existing] = await connection.query(`SELECT id FROM thesis WHERE student_id = ?`, [student_id]);
-        if (existing.length > 0){
+        if (existing.length > 0) {
             deleteFile(filePathToDelete);
             return res.status(409).json({ message: "Thesis already submitted" });
         }
@@ -303,7 +373,7 @@ exports.resubmitThesis = async (req, res) => {
         if (rows.length === 0) {
             deleteFile(filePathToDelete);
             return res.status(404).json({ message: "Thesis not found" });
-        } 
+        }
         const thesis = rows[0];
 
         if (thesis.status !== 'Rejected' || thesis.is_locked) {

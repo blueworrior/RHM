@@ -9,7 +9,8 @@ import {
     GraduationCap,
     UsersRound,
     Book,
-    FileText
+    FileText,
+    TrendingUp
 } from 'lucide-react';
 import { useAuth } from "../context/AuthContext";
 import logo from '../assets/logo.png';
@@ -37,14 +38,37 @@ const Sidebar = () => {
         { name: 'Publications', path: '/coordinator/publications', icon: BookOpen },
         { name: 'Thesis', path: '/coordinator/thesis', icon: Book }
     ];
+    // Supervisor navigations
+    const supervisorNav = [
+        { name: 'Dashboard', path: '/supervisor', icon: LayoutDashboard, exact: true },
+        { name: 'Proposals', path: '/supervisor/proposals', icon: FileText },
+        { name: 'Progress Reports', path: '/supervisor/progress-reports', icon: TrendingUp },
+        { name: 'Publications', path: '/supervisor/publications', icon: BookOpen },
+        { name: 'Thesis', path: '/supervisor/thesis', icon: GraduationCap }
+    ];
+
+    // Supervisor navigations
+    const studentNav = [
+        { name: 'Dashboard', path: '/student', icon: LayoutDashboard, exact: true },
+        { name: 'Proposals', path: '/student/proposals', icon: FileText },
+        { name: 'Progress Reports', path: '/student/progress-reports', icon: TrendingUp },
+        { name: 'Publications', path: '/student/publications', icon: BookOpen },
+        { name: 'Thesis', path: '/student/thesis', icon: GraduationCap }
+    ];
+
+    // Supervisor navigations
+    const examinerNav = [
+        { name: 'Dashboard', path: '/examiner', icon: LayoutDashboard, exact: true },
+        { name: 'Assigned Thesis', path: '/examiner/thesis', icon: GraduationCap }
+    ];
 
     // Select navigation based on role
     const navigation = {
         admin: adminNav,
         coordinator: coordinatorNav,
-        supervisor: [],
-        student: [],
-        examiner: []
+        supervisor: supervisorNav,
+        student: studentNav,
+        examiner: examinerNav
     };
 
     const items = navigation[user?.role] || [];

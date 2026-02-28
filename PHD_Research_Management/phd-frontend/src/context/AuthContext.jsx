@@ -8,21 +8,40 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is already logged in
-    const savedUser = localStorage.getItem('user');
-    const savedToken = localStorage.getItem('token');
-    
-    if (savedUser && savedToken) {
-      setUser(JSON.parse(savedUser));
-      api.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`;
-    }
-    
-    setLoading(false);
+    // ✅ UPDATED: Validate token on app load
+    const validateToken = async () => {
+      const savedUser = localStorage.getItem('user');
+      const savedToken = localStorage.getItem('token');
+      
+      if (savedUser && savedToken) {
+        try {
+          // Set token in axios headers
+          api.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`;
+          
+          // ✅ Try to make a simple API call to validate token
+          // If token is expired, this will fail with 401
+          await api.get('/api/auth/verify'); // We'll create this endpoint
+          
+          // Token is valid
+          setUser(JSON.parse(savedUser));
+        } catch (error) {
+          // ✅ Token is invalid or expired - clear everything
+          console.log('Token validation failed:', error.message);
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          delete api.defaults.headers.common['Authorization'];
+          setUser(null);
+        }
+      }
+      
+      setLoading(false);
+    };
+
+    validateToken();
   }, []);
 
   const login = async (email, password) => {
-
-    try{
+    try {
       const response = await api.post('/api/auth/login', { email, password });
       const { token, user } = response.data;
       
@@ -34,17 +53,16 @@ export const AuthProvider = ({ children }) => {
       setUser(user);
 
       return { success: true, user };
-    } catch (error){
-      
-      if(error.code === 'ERR_NETWORK' || !error.response){
+    } catch (error) {
+      if (error.code === 'ERR_NETWORK' || !error.response) {
         throw new Error('Cannot connect to server');
       }
 
-      if(error.response?.status === 401 || error.response?.status === 400){
+      if (error.response?.status === 401 || error.response?.status === 400) {
         throw new Error('Invalid email or password');
       }
 
-      throw new Error(error.response?.data?.message || 'Login failed. Please try again.')
+      throw new Error(error.response?.data?.message || 'Login failed. Please try again.');
     }
   };
 

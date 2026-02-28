@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, Eye, CheckCircle, XCircle } from 'lucide-react';
+import { UserPlus, Eye, CheckCircle, XCircle, Download } from 'lucide-react';
 import api from '../../services/api';
 import Modal from '../../components/Modal';
 import Loading from '../../components/Loading';
 
 const Thesis = () => {
-    const [approvedTheses, setApprovedTheses] = useState([]); // ✅ NEW
+    const [approvedTheses, setApprovedTheses] = useState([]);
     const [evaluatedTheses, setEvaluatedTheses] = useState([]);
     const [readyTheses, setReadyTheses] = useState([]);
     const [examiners, setExaminers] = useState([]);
@@ -22,6 +22,7 @@ const Thesis = () => {
     const [selectedThesis, setSelectedThesis] = useState(null);
     const [evaluations, setEvaluations] = useState([]);
     const [selectedExaminers, setSelectedExaminers] = useState([]);
+    const [assignedExaminerIds, setAssignedExaminerIds] = useState([]); // ✅ Track already assigned
     const [finalDecision, setFinalDecision] = useState({
         status: '',
         remarks: ''
@@ -34,12 +35,12 @@ const Thesis = () => {
     const fetchData = async () => {
         try {
             const [approvedRes, evalRes, readyRes, examRes] = await Promise.all([
-                api.get('/api/coordinator/thesis/approved'), // ✅ NEW - Get approved thesis
+                api.get('/api/coordinator/thesis/approved'),
                 api.get('/api/coordinator/thesis/evaluated'),
                 api.get('/api/coordinator/thesis/ready'),
                 api.get('/api/coordinator/examiners')
             ]);
-            setApprovedTheses(approvedRes.data || []); // ✅ NEW
+            setApprovedTheses(approvedRes.data || []);
             setEvaluatedTheses(evalRes.data.theses || []);
             setReadyTheses(readyRes.data || []);
             setExaminers(examRes.data || []);
@@ -64,20 +65,49 @@ const Thesis = () => {
         }
     };
 
-    const openAssignModal = (thesis) => {
+    const handleDownload = (filePath) => {
+        if (!filePath) {
+            setError('File not available');
+            return;
+        }
+        const downloadUrl = `http://localhost:5000/${filePath}`;
+        window.open(downloadUrl, '_blank');
+    };
+
+    // ✅ Get already assigned examiners when opening modal
+    const openAssignModal = async (thesis) => {
         setSelectedThesis(thesis);
         setSelectedExaminers([]);
         setError('');
+
+        // ✅ Fetch already assigned examiners for this thesis
+        try {
+            const response = await api.get(`/api/coordinator/thesis/${thesis.thesis_id}/assigned-examiners`);
+            setAssignedExaminerIds(response.data.map(e => e.examiner_id));
+        } catch (err) {
+            setAssignedExaminerIds([]);
+        }
+
         setIsAssignModalOpen(true);
     };
 
     const handleExaminerToggle = (examinerId) => {
-        setError(''); // Clear errors when selecting
+        setError('');
+
+        // ✅ Check if already assigned
+        if (assignedExaminerIds.includes(examinerId)) {
+            setError('This examiner is already assigned to this thesis');
+            return;
+        }
+
         if (selectedExaminers.includes(examinerId)) {
             setSelectedExaminers(selectedExaminers.filter(id => id !== examinerId));
         } else {
-            if (selectedExaminers.length >= 3) {
-                setError('Maximum 3 examiners allowed');
+            // ✅ Calculate total: already assigned + newly selected
+            const totalCount = assignedExaminerIds.length + selectedExaminers.length + 1;
+
+            if (totalCount > 3) {
+                setError('Maximum 3 examiners allowed (including already assigned)');
                 return;
             }
             setSelectedExaminers([...selectedExaminers, examinerId]);
@@ -89,23 +119,37 @@ const Thesis = () => {
         setError('');
         setSuccess('');
 
-        if (selectedExaminers.length === 0) {
+        // ✅ Validation: Must select 2-3 examiners total
+        const totalSelected = selectedExaminers.length;
+        const alreadyAssigned = assignedExaminerIds.length;
+        const totalCount = alreadyAssigned + totalSelected;
+
+        if (totalSelected === 0) {
             setError('Please select at least one examiner');
             return;
         }
 
+        // ✅ Check minimum requirement (2 total)
+        if (totalCount < 2) {
+            setError(`You must assign at least 2 examiners. Currently ${alreadyAssigned} assigned, select ${2 - alreadyAssigned} more.`);
+            return;
+        }
+
         try {
-            // Assign each examiner
-            for (const examinerId of selectedExaminers) {
-                await api.post('/api/coordinator/assign-examiner', {
+            // ✅ Assign each selected examiner
+            const assignPromises = selectedExaminers.map(examinerId =>
+                api.post('/api/coordinator/assign-examiner', {
                     thesis_id: selectedThesis.thesis_id,
                     examiner_id: examinerId
-                });
-            }
+                })
+            );
 
-            setSuccess(`${selectedExaminers.length} examiner(s) assigned successfully`);
+            await Promise.all(assignPromises);
+
+            setSuccess(`${totalSelected} examiner(s) assigned successfully (Total: ${totalCount})`);
             setIsAssignModalOpen(false);
             setSelectedExaminers([]);
+            setAssignedExaminerIds([]);
             fetchData();
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to assign examiners');
@@ -115,6 +159,7 @@ const Thesis = () => {
     const openFinalizeModal = (thesis) => {
         setSelectedThesis(thesis);
         setFinalDecision({ status: '', remarks: '' });
+        setError('');
         setIsFinalizeModalOpen(true);
     };
 
@@ -158,13 +203,13 @@ const Thesis = () => {
             {error && <div className="error-message">{error}</div>}
             {success && <div className="success-message">{success}</div>}
 
-            {/* ✅ NEW SECTION: Approved Thesis (Waiting for Examiner Assignment) */}
+            {/* Approved Thesis Section */}
             <div className="card" style={{ marginBottom: '32px' }}>
                 <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', color: 'var(--primary)' }}>
                     Approved Thesis - Assign Examiners
                 </h2>
                 <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-                    These thesis have been approved by supervisors and are ready for examiner assignment
+                    Assign 2-3 examiners to each thesis (minimum 2 required)
                 </p>
 
                 {approvedTheses.length === 0 ? (
@@ -203,10 +248,9 @@ const Thesis = () => {
                                                 onClick={() => openAssignModal(thesis)}
                                                 className="btn btn-primary"
                                                 style={{ padding: '6px 12px' }}
-                                                disabled={thesis.assigned_examiners >= 3}
                                             >
                                                 <UserPlus size={16} />
-                                                {thesis.assigned_examiners === 0 ? 'Assign' : 'Add More'}
+                                                Assign Examiners
                                             </button>
                                         </td>
                                     </tr>
@@ -217,18 +261,18 @@ const Thesis = () => {
                 )}
             </div>
 
-            {/* Evaluated Thesis Section */}
+            {/* Under Examination Section */}
             <div className="card" style={{ marginBottom: '32px' }}>
                 <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', color: 'var(--primary)' }}>
                     Under Examination
                 </h2>
                 <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-                    Thesis that have been assigned to examiners and have received evaluations
+                    Thesis currently being evaluated by examiners
                 </p>
 
                 {evaluatedTheses.length === 0 ? (
                     <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>
-                        No evaluated thesis yet
+                        No thesis under examination
                     </p>
                 ) : (
                     <div className="table-container">
@@ -256,7 +300,11 @@ const Thesis = () => {
                                                 {thesis.status}
                                             </span>
                                         </td>
-                                        <td>{thesis.total_evaluations} / 3</td>
+                                        <td>
+                                            <span className={`badge ${thesis.total_evaluations >= 2 ? 'badge-active' : 'badge-inactive'}`}>
+                                                {thesis.total_evaluations} / {thesis.total_assigned_examiners || 0}
+                                            </span>
+                                        </td>
                                         <td>
                                             <button
                                                 onClick={() => handleViewEvaluations(thesis)}
@@ -282,7 +330,7 @@ const Thesis = () => {
                     Ready for Final Decision
                 </h2>
                 <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-                    Thesis that have received all evaluations and are ready for your final decision
+                    Thesis ready for final decision and successfully approved thesis
                 </p>
 
                 {readyTheses.length === 0 ? (
@@ -309,14 +357,35 @@ const Thesis = () => {
                                         <td>{thesis.title}</td>
                                         <td>v{thesis.version}</td>
                                         <td>
-                                            <button
-                                                onClick={() => openFinalizeModal(thesis)}
-                                                className="btn btn-primary"
-                                                style={{ padding: '6px 12px' }}
-                                            >
-                                                <CheckCircle size={16} />
-                                                Finalize
-                                            </button>
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                {thesis.file_path && (
+                                                    <button
+                                                        onClick={() => handleDownload(thesis.file_path)}
+                                                        className="btn btn-outline"
+                                                        style={{ padding: '6px 12px' }}
+                                                        title="Download Thesis"
+                                                    >
+                                                        <Download size={16} />
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={() => handleViewEvaluations({ thesis_id: thesis.id, title: thesis.title })}
+                                                    className="btn btn-outline"
+                                                    style={{ padding: '6px 12px' }}
+                                                >
+                                                    <Eye size={16} />
+                                                    View Evaluations
+                                                </button>
+                                                <button
+                                                    onClick={() => openFinalizeModal(thesis)}
+                                                    className={`btn ${thesis.status === 'Approved_Final' ? 'btn-success' : 'btn-danger'}`}
+                                                    style={{ padding: '6px 12px' }}
+                                                    disabled={thesis.status === 'Approved_Final' ? true : false}
+                                                >
+                                                    <CheckCircle size={16} />
+                                                    {thesis.status === 'Approved_Final' ? 'Finalized' : 'Finalize'}
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -332,6 +401,7 @@ const Thesis = () => {
                 onClose={() => {
                     setIsAssignModalOpen(false);
                     setSelectedExaminers([]);
+                    setAssignedExaminerIds([]);
                     setError('');
                 }}
                 title="Assign Examiners"
@@ -340,9 +410,12 @@ const Thesis = () => {
                     {error && <div className="error-message">{error}</div>}
 
                     <p style={{ marginBottom: '20px', color: 'var(--text-secondary)' }}>
-                        Thesis: <strong>{selectedThesis?.title}</strong><br />
-                        Student: <strong>{selectedThesis?.student_name}</strong><br />
-                        <span style={{ fontSize: '12px' }}>Select up to 3 examiners (currently assigned: {selectedThesis?.assigned_examiners || 0})</span>
+                        <strong>Thesis:</strong> {selectedThesis?.title}<br />
+                        <strong>Student:</strong> {selectedThesis?.student_name}<br />
+                        <strong>Already Assigned:</strong> {assignedExaminerIds.length} examiner(s)<br />
+                        <span style={{ fontSize: '12px', color: 'var(--primary)' }}>
+                            Select {2 - assignedExaminerIds.length} to {3 - assignedExaminerIds.length} more examiner(s) (Total needed: 2-3)
+                        </span>
                     </p>
 
                     <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
@@ -351,53 +424,70 @@ const Thesis = () => {
                                 No examiners available in your department
                             </p>
                         ) : (
-                            examiners.map((examiner) => (
-                                <div
-                                    key={examiner.examiner_id}
-                                    style={{
-                                        padding: '12px',
-                                        border: '2px solid var(--border)',
-                                        borderRadius: '8px',
-                                        marginBottom: '12px',
-                                        cursor: 'pointer',
-                                        background: selectedExaminers.includes(examiner.examiner_id)
-                                            ? 'rgba(177, 18, 38, 0.1)'
-                                            : 'var(--surface)',
-                                        borderColor: selectedExaminers.includes(examiner.examiner_id)
-                                            ? 'var(--primary)'
-                                            : 'var(--border)'
-                                    }}
-                                    onClick={() => handleExaminerToggle(examiner.examiner_id)}
-                                >
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <div>
-                                            <strong>{examiner.first_name} {examiner.last_name}</strong>
-                                            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
-                                                {examiner.designation} - {examiner.department}
-                                            </p>
+                            examiners.map((examiner) => {
+                                const isAssigned = assignedExaminerIds.includes(examiner.examiner_id);
+                                const isSelected = selectedExaminers.includes(examiner.examiner_id);
+
+                                return (
+                                    <div
+                                        key={examiner.examiner_id}
+                                        style={{
+                                            padding: '12px',
+                                            border: '2px solid var(--border)',
+                                            borderRadius: '8px',
+                                            marginBottom: '12px',
+                                            cursor: isAssigned ? 'not-allowed' : 'pointer',
+                                            background: isAssigned
+                                                ? 'rgba(128, 128, 128, 0.1)'
+                                                : isSelected
+                                                    ? 'rgba(177, 18, 38, 0.1)'
+                                                    : 'var(--surface)',
+                                            borderColor: isAssigned
+                                                ? '#ccc'
+                                                : isSelected
+                                                    ? 'var(--primary)'
+                                                    : 'var(--border)',
+                                            opacity: isAssigned ? 0.6 : 1
+                                        }}
+                                        onClick={() => !isAssigned && handleExaminerToggle(examiner.examiner_id)}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div>
+                                                <strong>{examiner.first_name} {examiner.last_name}</strong>
+                                                {isAssigned && <span style={{ color: 'var(--success)', fontSize: '12px', marginLeft: '8px' }}>✓ Already Assigned</span>}
+                                                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+                                                    {examiner.designation} - {examiner.department}
+                                                </p>
+                                            </div>
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected || isAssigned}
+                                                disabled={isAssigned}
+                                                onChange={() => { }}
+                                                style={{ width: '20px', height: '20px' }}
+                                            />
                                         </div>
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedExaminers.includes(examiner.examiner_id)}
-                                            onChange={() => { }}
-                                            style={{ width: '20px', height: '20px' }}
-                                        />
                                     </div>
-                                </div>
-                            ))
+                                );
+                            })
                         )}
                     </div>
 
                     <p style={{ marginTop: '16px', fontSize: '14px', color: 'var(--text-secondary)' }}>
-                        Selected: {selectedExaminers.length} examiner(s)
+                        Selected: {selectedExaminers.length} |
+                        Total (including assigned): {assignedExaminerIds.length + selectedExaminers.length} / 3
                     </p>
 
                     <div className="modal-footer">
                         <button type="button" onClick={() => setIsAssignModalOpen(false)} className="btn btn-outline">
                             Cancel
                         </button>
-                        <button type="submit" className="btn btn-primary" disabled={selectedExaminers.length === 0}>
-                            Assign Examiner{selectedExaminers.length !== 1 ? 's' : ''}
+                        <button
+                            type="submit"
+                            className="btn btn-primary"
+                            disabled={selectedExaminers.length === 0}
+                        >
+                            Assign {selectedExaminers.length} Examiner{selectedExaminers.length !== 1 ? 's' : ''}
                         </button>
                     </div>
                 </form>
@@ -414,12 +504,12 @@ const Thesis = () => {
             >
                 <div>
                     <p style={{ marginBottom: '20px', color: 'var(--text-secondary)' }}>
-                        Thesis: <strong>{selectedThesis?.title}</strong>
+                        <strong>Thesis:</strong> {selectedThesis?.title}
                     </p>
 
                     {evaluations.length === 0 ? (
                         <p style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>
-                            No evaluations yet
+                            No evaluations received yet
                         </p>
                     ) : (
                         evaluations.map((evaluation, index) => (
@@ -442,7 +532,7 @@ const Thesis = () => {
                                 <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
                                     {evaluation.remarks || 'No remarks provided'}
                                 </p>
-                                <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '8px' }}>
+                                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>
                                     Evaluated on: {new Date(evaluation.created_at).toLocaleDateString()}
                                 </p>
                             </div>
@@ -474,8 +564,8 @@ const Thesis = () => {
                     {error && <div className="error-message">{error}</div>}
 
                     <p style={{ marginBottom: '20px', color: 'var(--text-secondary)' }}>
-                        Student: <strong>{selectedThesis?.first_name} {selectedThesis?.last_name}</strong><br />
-                        Thesis: <strong>{selectedThesis?.title}</strong>
+                        <strong>Student:</strong> {selectedThesis?.first_name} {selectedThesis?.last_name}<br />
+                        <strong>Thesis:</strong> {selectedThesis?.title}
                     </p>
 
                     <div className="input-group">

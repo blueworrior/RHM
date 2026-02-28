@@ -492,55 +492,6 @@ exports.getDepartmentPublications = async (req, res) => {
 };
 
 //////////////////////////////////////////////////////////////
-// GET APPROVED THESIS (WAITING FOR EXAMINER ASSIGNMENT)
-//////////////////////////////////////////////////////////////
-exports.getApprovedTheses = async (req, res) => {
-    const connection = await db.promise().getConnection();
-
-    try {
-        const user_id = req.user.id;
-
-        const [[coord]] = await connection.query(
-            'SELECT dept_id FROM coordinators WHERE user_id = ?',
-            [user_id]
-        );
-
-        if (!coord)
-            return res.status(403).json({ message: "Not a coordinator" });
-
-        // Get thesis that are approved by supervisor but not yet under examination
-        const [rows] = await connection.query(`
-            SELECT 
-                t.id AS thesis_id,
-                t.title,
-                t.status,
-                t.version,
-                t.submitted_at,
-                s.registration_no,
-                CONCAT(u.first_name,' ',u.last_name) AS student_name,
-                COUNT(ea.id) AS assigned_examiners
-            FROM thesis t
-            JOIN students s ON t.student_id = s.id
-            JOIN users u ON s.user_id = u.id
-            LEFT JOIN examiner_assignments ea ON ea.thesis_id = t.id AND ea.is_active = TRUE
-            WHERE s.dept_id = ?
-            AND t.status = 'Approved'
-            AND t.is_locked = FALSE
-            GROUP BY t.id
-            ORDER BY t.submitted_at DESC
-        `, [coord.dept_id]);
-
-        res.json(rows);
-
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Server Error" });
-    } finally {
-        connection.release();
-    }
-};
-
-//////////////////////////////////////////////////////////////
 // GET DEPARTMENT EXAMINERS
 //////////////////////////////////////////////////////////////
 exports.getDepartmentExaminers = async (req, res) => {
@@ -583,7 +534,7 @@ exports.getDepartmentExaminers = async (req, res) => {
 };
 
 //////////////////////////////////////////////////////////////
-// ASSIGN EXAMINER (FULL TRANSACTION)
+// ASSIGN EXAMINER - DEADLOCK FIXED
 //////////////////////////////////////////////////////////////
 exports.assignExaminer = async (req, res) => {
 
@@ -603,26 +554,28 @@ exports.assignExaminer = async (req, res) => {
 
         if (!coord) {
             await conn.rollback();
-            conn.release(); // release connection
+            conn.release();
             return res.status(403).json({ message: "Not a coordinator" });
         }
 
         const dept_id = coord.dept_id;
 
+        // ✅ FIX: Use FOR UPDATE to lock the row for update
         const [thesis] = await conn.query(
-            `SELECT t.id
+            `SELECT t.id, t.status
              FROM thesis t
              JOIN students s ON t.student_id = s.id
              WHERE t.id = ?
              AND s.dept_id = ?
-             AND t.is_locked = FALSE`,
+             AND t.is_locked = FALSE
+             FOR UPDATE`,  // ✅ This locks the row properly
             [thesis_id, dept_id]
         );
 
         if (!thesis.length) {
             await conn.rollback();
-            conn.release(); // release connection
-            return res.status(409).json({ message: "Invalid thesis" });
+            conn.release();
+            return res.status(409).json({ message: "Invalid thesis or thesis is locked" });
         }
 
         const [[examiner]] = await conn.query(
@@ -633,41 +586,52 @@ exports.assignExaminer = async (req, res) => {
 
         if (!examiner) {
             await conn.rollback();
-            conn.release(); // release connection
+            conn.release();
             return res.status(409).json({ message: "Examiner not in department" });
         }
 
         const [[count]] = await conn.query(
             `SELECT COUNT(*) AS total
              FROM examiner_assignments
-             WHERE thesis_id = ?`,
+             WHERE thesis_id = ? AND is_active = TRUE`,
             [thesis_id]
         );
 
         if (count.total >= 3) {
             await conn.rollback();
-            conn.release(); // release connection
-            return res.status(409).json({ message: "Max 3 examiners allowed" });
+            conn.release();
+            return res.status(409).json({ message: "Maximum 3 examiners allowed" });
         }
+
         const [[duplicate]] = await conn.query(
             `SELECT id 
              FROM examiner_assignments
-             WHERE thesis_id = ? AND examiner_id = ?`,
+             WHERE thesis_id = ? AND examiner_id = ? AND is_active = TRUE`,
             [thesis_id, examiner_id]
         );
 
         if (duplicate) {
             await conn.rollback();
-            conn.release(); // release connection
-            return res.status(409).json({ message: "Same examiner already assigned to this thesis" });
+            conn.release();
+            return res.status(409).json({ message: "This examiner is already assigned to this thesis" });
         }
 
+        // Insert examiner assignment
         await conn.query(
-            `INSERT INTO examiner_assignments (thesis_id, examiner_id)
-             VALUES (?, ?)`,
+            `INSERT INTO examiner_assignments (thesis_id, examiner_id, is_active)
+             VALUES (?, ?, TRUE)`,
             [thesis_id, examiner_id]
         );
 
+        // Get new count after insertion
+        const [[newCount]] = await conn.query(
+            `SELECT COUNT(*) AS total
+             FROM examiner_assignments
+             WHERE thesis_id = ? AND is_active = TRUE`,
+            [thesis_id]
+        );
+
+        // ✅ Update status (row is already locked by FOR UPDATE)
         await conn.query(
             `UPDATE thesis
              SET status = 'Under_Examination'
@@ -677,7 +641,11 @@ exports.assignExaminer = async (req, res) => {
 
         await conn.commit();
 
-        res.json({ message: "Examiner assigned successfully" });
+        res.json({ 
+            message: "Examiner assigned successfully",
+            total_examiners: newCount.total,
+            status: 'Under_Examination'
+        });
 
     } catch (err) {
 
@@ -691,7 +659,56 @@ exports.assignExaminer = async (req, res) => {
 };
 
 //////////////////////////////////////////////////////////////
-// GET EVALUATED THESIS
+// GET APPROVED THESIS (WAITING FOR EXAMINER ASSIGNMENT)
+//////////////////////////////////////////////////////////////
+exports.getApprovedTheses = async (req, res) => {
+    const connection = await db.promise().getConnection();
+
+    try {
+        const user_id = req.user.id;
+
+        const [[coord]] = await connection.query(
+            'SELECT dept_id FROM coordinators WHERE user_id = ?',
+            [user_id]
+        );
+
+        if (!coord)
+            return res.status(403).json({ message: "Not a coordinator" });
+
+        // ✅ Show thesis that need examiners (status = 'Approved')
+        const [rows] = await connection.query(`
+            SELECT 
+                t.id AS thesis_id,
+                t.title,
+                t.status,
+                t.version,
+                t.submitted_at,
+                s.registration_no,
+                CONCAT(u.first_name,' ',u.last_name) AS student_name,
+                COUNT(ea.id) AS assigned_examiners
+            FROM thesis t
+            JOIN students s ON t.student_id = s.id
+            JOIN users u ON s.user_id = u.id
+            LEFT JOIN examiner_assignments ea ON ea.thesis_id = t.id AND ea.is_active = TRUE
+            WHERE s.dept_id = ?
+            AND t.is_locked = FALSE
+            AND t.status = 'Approved'
+            GROUP BY t.id
+            ORDER BY t.submitted_at DESC
+        `, [coord.dept_id]);
+
+        res.json(rows);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Server Error" });
+    } finally {
+        connection.release();
+    }
+};
+
+//////////////////////////////////////////////////////////////
+// GET EVALUATED THESES - CORRECTED VERSION
 //////////////////////////////////////////////////////////////
 exports.getEvaluatedTheses = async (req, res) => {
 
@@ -709,6 +726,8 @@ exports.getEvaluatedTheses = async (req, res) => {
         if (!coord)
             return res.status(403).json({ message: "Not a coordinator" });
 
+        // ✅ CRITICAL FIX: Show thesis under examination that are NOT ready for final
+        // When ready_for_final = TRUE, they should move to "Ready" section only
         const [rows] = await connection.query(`
             SELECT 
                 t.id AS thesis_id,
@@ -716,20 +735,26 @@ exports.getEvaluatedTheses = async (req, res) => {
                 t.status,
                 t.version,
                 t.submitted_at,
-
+                t.ready_for_final,
                 s.registration_no,
                 CONCAT(u.first_name,' ',u.last_name) AS student_name,
-
-                COUNT(DISTINCT eg.examiner_id) AS total_evaluations
+                COUNT(DISTINCT eg.examiner_id) AS total_evaluations,
+                COUNT(DISTINCT ea.examiner_id) AS total_assigned_examiners
 
             FROM thesis t
             JOIN students s ON t.student_id = s.id
             JOIN users u ON s.user_id = u.id
-            JOIN examiner_grades eg
+            LEFT JOIN examiner_grades eg
                 ON eg.thesis_id = t.id
                 AND eg.thesis_version = t.version
+            LEFT JOIN examiner_assignments ea
+                ON ea.thesis_id = t.id
+                AND ea.is_active = TRUE
 
             WHERE s.dept_id = ?
+            AND t.status = 'Under_Examination'
+            AND t.is_locked = FALSE
+            AND t.ready_for_final = FALSE
             GROUP BY t.id
             ORDER BY t.submitted_at DESC
         `, [coord.dept_id]);
@@ -800,7 +825,7 @@ exports.getThesisEvaluations = async (req, res) => {
 };
 
 //////////////////////////////////////////////////////////////
-// GET READY THESIS
+// GET READY THESIS - ONLY APPROVED FINAL
 //////////////////////////////////////////////////////////////
 exports.getReadyThesis = async (req, res) => {
 
@@ -818,11 +843,16 @@ exports.getReadyThesis = async (req, res) => {
         if (!coord)
             return res.status(403).json({ message: "Not coordinator" });
 
+        // ✅ Show ONLY ready_for_final OR approved_final
+        // Rejected thesis are hidden (student will resubmit)
         const [rows] = await connection.query(`
             SELECT 
                 t.id,
                 t.title,
                 t.version,
+                t.status,
+                t.is_locked,
+                t.file_path,
                 u.first_name,
                 u.last_name,
                 s.registration_no
@@ -830,8 +860,12 @@ exports.getReadyThesis = async (req, res) => {
             JOIN students s ON t.student_id = s.id
             JOIN users u ON s.user_id = u.id
             WHERE s.dept_id = ?
-            AND t.ready_for_final = TRUE
-            AND t.is_locked = FALSE
+            AND (
+                (t.ready_for_final = TRUE AND t.is_locked = FALSE)
+                OR 
+                (t.status = 'Approved_Final' AND t.is_locked = TRUE)
+            )
+            ORDER BY t.is_locked ASC, t.submitted_at DESC
         `, [coord.dept_id]);
 
         res.json(rows);
@@ -845,9 +879,8 @@ exports.getReadyThesis = async (req, res) => {
 };
 
 //////////////////////////////////////////////////////////////
-// FINALIZE THESIS (VERY IMPORTANT TRANSACTION)
+// FINALIZE THESIS - CORRECTED VERSION
 //////////////////////////////////////////////////////////////
-
 exports.finalizeThesis = async (req, res) => {
 
     const conn = await db.promise().getConnection();
@@ -871,37 +904,42 @@ exports.finalizeThesis = async (req, res) => {
 
         if (!coord) {
             await conn.rollback();
-            conn.release(); // release connection
+            conn.release();
             return res.status(403).json({ message: "Not a coordinator" });
         }
 
         const [[thesis]] = await conn.query(
-            `SELECT t.version
+            `SELECT t.version, t.student_id
              FROM thesis t
              JOIN students s ON t.student_id = s.id
              WHERE t.id = ?
              AND s.dept_id = ?
-             AND t.ready_for_final = TRUE`,
+             AND t.ready_for_final = TRUE
+             AND t.is_locked = FALSE`,
             [thesis_id, coord.dept_id]
         );
 
         if (!thesis) {
             await conn.rollback();
-            conn.release(); // release connection
-            return res.status(403).json({ message: "Invalid thesis state" });
+            conn.release();
+            return res.status(403).json({ message: "Thesis not found or not ready for final decision" });
         }
+
+        // ✅ CRITICAL FIX: Only lock if APPROVED, not if REJECTED
+        // Rejected thesis should stay unlocked so student can resubmit
+        const shouldLock = status === 'Approved';
+        const finalStatus = status === 'Approved' ? 'Approved_Final' : 'Rejected';
 
         await conn.query(
             `UPDATE thesis
-             SET status = ?, is_locked = ?
+             SET status = ?, 
+                 is_locked = ?,
+                 ready_for_final = FALSE
              WHERE id = ?`,
-            [
-                status === 'Approved' ? 'Approved_Final' : status,
-                status === 'Approved',
-                thesis_id
-            ]
+            [finalStatus, shouldLock, thesis_id]
         );
 
+        // Insert approval record
         await conn.query(
             `INSERT INTO approvals
             (reference_type, reference_id, approval_role, approved_by, status, remarks, thesis_version)
@@ -909,6 +947,7 @@ exports.finalizeThesis = async (req, res) => {
             [thesis_id, coordinator_id, status, remarks || null, thesis.version]
         );
 
+        // Deactivate examiner assignments
         await conn.query(
             `UPDATE examiner_assignments
              SET is_active = FALSE
@@ -916,9 +955,25 @@ exports.finalizeThesis = async (req, res) => {
             [thesis_id]
         );
 
+        // ✅ If rejected, reset thesis to allow resubmission
+        // if (status === 'Rejected') {
+        //     // Increment version for next submission
+        //     await conn.query(
+        //         `UPDATE thesis
+        //          SET version = version + 1,
+        //              file_path = NULL
+        //          WHERE id = ?`,
+        //         [thesis_id]
+        //     );
+        // }
+
         await conn.commit();
 
-        res.json({ message: `Thesis ${status} successfully` });
+        res.json({ 
+            message: `Thesis ${status} successfully`,
+            finalized: true,
+            locked: shouldLock
+        });
 
     } catch (err) {
 
@@ -931,14 +986,15 @@ exports.finalizeThesis = async (req, res) => {
     }
 };
 
+/////////////////////////////////////////////////////////////
+// GET ASSIGNED EXAMINERS FOR A THESIS
 //////////////////////////////////////////////////////////////
-// GET DEPARTMENT EXAMINERS
-//////////////////////////////////////////////////////////////
-exports.getDepartmentExaminers = async (req, res) => {
+exports.getThesisAssignedExaminers = async (req, res) => {
     const connection = await db.promise().getConnection();
 
     try {
         const user_id = req.user.id;
+        const thesis_id = req.params.id;
 
         const [[coord]] = await connection.query(
             'SELECT dept_id FROM coordinators WHERE user_id = ?',
@@ -948,22 +1004,22 @@ exports.getDepartmentExaminers = async (req, res) => {
         if (!coord)
             return res.status(403).json({ message: "Not a coordinator" });
 
-        const [rows] = await connection.query(`
+        // Get assigned examiners for this thesis
+        const [examiners] = await connection.query(`
             SELECT
-                e.id AS examiner_id,
-                u.id AS user_id,
-                u.first_name,
-                u.last_name,
-                e.designation,
-                d.name AS department
-            FROM examiners e
+                ea.examiner_id,
+                CONCAT(u.first_name, ' ', u.last_name) AS examiner_name
+            FROM examiner_assignments ea
+            JOIN examiners e ON ea.examiner_id = e.id
             JOIN users u ON e.user_id = u.id
-            JOIN departments d ON e.dept_id = d.id
-            WHERE e.dept_id = ?
-            ORDER BY u.first_name
-        `, [coord.dept_id]);
+            JOIN thesis t ON ea.thesis_id = t.id
+            JOIN students s ON t.student_id = s.id
+            WHERE ea.thesis_id = ?
+            AND s.dept_id = ?
+            AND ea.is_active = TRUE
+        `, [thesis_id, coord.dept_id]);
 
-        res.json(rows);
+        res.json(examiners);
 
     } catch (err) {
         console.error(err);

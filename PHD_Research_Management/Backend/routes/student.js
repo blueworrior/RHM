@@ -37,6 +37,8 @@ router.post(
 );
 // -> 2. List Progress Report
 router.get('/progress-reports', auth, role(['student']), studentController.getMyProgressReport);
+// -> 3. List Progress Reports with Status & Remarks
+router.get('/progress-reports/status', auth, role(['student']), studentController.getMyProgressReportStatus);
 
 
 // Publication

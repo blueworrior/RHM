@@ -28,13 +28,13 @@ router.put('/remove-supervisor', auth, role(['coordinator']), coordinatorControl
 // -> 9. PUBLICATION (list all my department student )
 router.get('/publications', auth, role(['coordinator']), coordinatorController.getDepartmentPublications);
 
-// -> 10 GET approved thesis (waiting for examiner assignment)
-router.get('/thesis/approved', auth, role(['coordinator']), coordinatorController.getApprovedTheses);
-// -> 11 GET department examiners
+// -> 10 GET department examiners
 router.get('/examiners', auth, role(['coordinator']), coordinatorController.getDepartmentExaminers);
-// -> 12 ASSIGN EXAMINER
-router.get('/examiners', auth, role(['coordinator']), coordinatorController.getDepartmentExaminers);
+// -> 11 ASSIGN EXAMINER
+router.post('/assign-examiner', auth, role(['coordinator']), coordinatorController.assignExaminer);
 
+// -> 12 GET approved thesis (waiting for examiner assignment)
+router.get('/thesis/approved', auth, role(['coordinator']), coordinatorController.getApprovedTheses);
 // -> 13 GET thesis with evaluations
 router.get('/thesis/evaluated', auth, role(['coordinator']), coordinatorController.getEvaluatedTheses);
 // -> 14 Get Thesis Evaluations
@@ -45,5 +45,7 @@ router.get('/thesis/ready', auth, role(['coordinator']), coordinatorController.g
 router.put('/thesis/:id/final-decision', auth, role(['coordinator']), coordinatorController.finalizeThesis);
 // -> 17. GET examiners (for thesis assignment)
 router.get('/examiners', auth, role(['coordinator']), coordinatorController.getDepartmentExaminers);
+// -> 12.5 Get assigned examiners for a thesis
+router.get('/thesis/:id/assigned-examiners', auth, role(['coordinator']), coordinatorController.getThesisAssignedExaminers);
 
 module.exports = router;

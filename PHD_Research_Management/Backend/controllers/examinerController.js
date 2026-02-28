@@ -17,24 +17,35 @@ exports.getMyAssignedTheses = async (req, res) => {
 
         const examiner_id = examinerResult[0].id;
 
+        // ✅ UPDATED QUERY: Include evaluation status
         const sql = `
             SELECT
                 t.id AS thesis_id,
                 t.title,
                 t.file_path,
                 t.status,
+                t.version,
                 t.submitted_at,
                 s.registration_no,
-                CONCAT(u.first_name, ' ', u.last_name) AS student_name
+                CONCAT(u.first_name, ' ', u.last_name) AS student_name,
+                CASE 
+                    WHEN eg.id IS NOT NULL THEN TRUE 
+                    ELSE FALSE 
+                END AS has_evaluated
             FROM examiner_assignments ea
             JOIN thesis t ON ea.thesis_id = t.id
             JOIN students s ON t.student_id = s.id
             JOIN users u ON s.user_id = u.id
+            LEFT JOIN examiner_grades eg 
+                ON eg.thesis_id = t.id 
+                AND eg.examiner_id = ?
+                AND eg.thesis_version = t.version
             WHERE ea.examiner_id = ?
-            ORDER BY t.status
+            AND ea.is_active = TRUE
+            ORDER BY t.status, t.submitted_at DESC
         `;
 
-        const [rows] = await db.promise().query(sql, [examiner_id]);
+        const [rows] = await db.promise().query(sql, [examiner_id, examiner_id]);
         res.json(rows);
 
     } catch (err) {
