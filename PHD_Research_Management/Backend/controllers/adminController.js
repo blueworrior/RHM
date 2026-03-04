@@ -859,6 +859,7 @@ exports.getExaminer = async (req, res) => {
                 u.id AS user_id,
                 u.first_name,
                 u.last_name,
+                u.email,
                 d.name AS department
             FROM users u
             JOIN examiners e ON u.id = e.user_id
