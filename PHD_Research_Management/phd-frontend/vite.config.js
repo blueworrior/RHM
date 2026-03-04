@@ -5,12 +5,12 @@ export default defineConfig({
   plugins: [react()],
   server: {
     allowedHosts: [
-      'rhm-production.up.railway.app'
+      'rhm-production-ad6d.up.railway.app'
     ]
   },
   preview: {
     allowedHosts: [
-      'rhm-production.up.railway.app'
+      'rhm-production-ad6d.up.railway.app'
     ]
   }
 })
