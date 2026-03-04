@@ -18,8 +18,8 @@ pool.getConnection((err, connection) => {
   console.error("Database connection failed:", err);
 } else {
   console.log("Database Connected");
+  connection.release();
 }
-    connection.release();
 });
 
 module.exports = pool;
