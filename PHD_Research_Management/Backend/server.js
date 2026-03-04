@@ -29,6 +29,11 @@ app.get('/api/test', auth, (req, res)=> {
     res.json({message: 'JWT Working', user: req.user})
 })
 
+// running backend shows
+app.get("/", (req, res) => {
+  res.send("Backend is running 🚀");
+});
+
 // db.query('SELECT * FROM users', (err, results) => {
 //     if(err) console.log(err);
 //     else console.log('Users:', results);
