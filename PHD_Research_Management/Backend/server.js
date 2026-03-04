@@ -4,7 +4,13 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const db = require('./config/db')
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    "https://rhm-production-ad6d.up.railway.app"
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
 app.use(express.json());
 app.use('/uploads', express.static('uploads')); //serve PDFs
 
