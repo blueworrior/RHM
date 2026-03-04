@@ -18,7 +18,7 @@ app.use('/api/examiner',require('./routes/examiner'));
 app.use('/uploads', express.static('uploads'));
 
 
-app.listen(PORT, ()=> console.log(`Server running on PORT ${5000}`));
+app.listen(PORT, ()=> console.log(`Server running on PORT ${PORT}`));
 
 
 //----------Dummies------------
@@ -29,7 +29,7 @@ app.get('/api/test', auth, (req, res)=> {
     res.json({message: 'JWT Working', user: req.user})
 })
 
-db.query('SELECT * FROM users', (err, results) => {
-    if(err) console.log(err);
-    else console.log('Users:', results);
-});
+// db.query('SELECT * FROM users', (err, results) => {
+//     if(err) console.log(err);
+//     else console.log('Users:', results);
+// });
