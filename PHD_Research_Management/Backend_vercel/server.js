@@ -14,11 +14,12 @@ const app = express();
 //   credentials: true
 // }));
 app.use(cors({
-  origin: "https://stirring-cupcake-2280ba.netlify.app",
+  origin: "https://zippy-daifuku-d55889.netlify.app", // ← your new Netlify URL
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 }));
+app.options("*", cors());
 
 // Explicitly handle preflight requests
 app.options("*", cors());

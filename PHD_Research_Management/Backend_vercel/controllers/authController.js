@@ -32,7 +32,8 @@ exports.login = async (req, res) => {
             WHERE users.email = ?
         `;
 
-        const [results] = await db.promise().query(sql, [email]);
+        const results = await db.query(sql, [email]);
+        const rows = results.rows;  // pg uses .rows not results directly
 
         if (results.length === 0) {
             return res.status(401).json({
