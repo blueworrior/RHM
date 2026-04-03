@@ -8,11 +8,20 @@ dotenv.config();
 const app = express();
 
 // Middlewares
+// app.use(cors({
+//   origin: "*", // you can lock this later to Netlify domain
+//   methods: ["GET", "POST", "PUT", "DELETE"],
+//   credentials: true
+// }));
 app.use(cors({
-  origin: "*", // you can lock this later to Netlify domain
-  methods: ["GET", "POST", "PUT", "DELETE"],
+  origin: "https://stirring-cupcake-2280ba.netlify.app",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 }));
+
+// Explicitly handle preflight requests
+app.options("*", cors());
 
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
