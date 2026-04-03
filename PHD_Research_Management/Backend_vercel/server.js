@@ -14,7 +14,7 @@ const app = express();
 //   credentials: true
 // }));
 app.use(cors({
-  origin: "https://zippy-daifuku-d55889.netlify.app", // ← your new Netlify URL
+  origin: "https://steady-kitten-0f6a34.netlify.app", // ← your new Netlify URL
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
