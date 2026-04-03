@@ -14,7 +14,7 @@ const app = express();
 //   credentials: true
 // }));
 const corsOptions = {
-  origin: "https://steady-kitten-0f6a34.netlify.app",
+  origin: "https://dainty-liger-af0f92.netlify.app",
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
