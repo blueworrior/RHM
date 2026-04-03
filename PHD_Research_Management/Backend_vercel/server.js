@@ -13,16 +13,16 @@ const app = express();
 //   methods: ["GET", "POST", "PUT", "DELETE"],
 //   credentials: true
 // }));
-app.use(cors({
-  origin: "https://steady-kitten-0f6a34.netlify.app", // ← your new Netlify URL
+const corsOptions = {
+  origin: "https://steady-kitten-0f6a34.netlify.app",
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
-}));
-app.options("*", cors());
+};
 
-// Explicitly handle preflight requests
-app.options("*", cors());
+app.use(cors(corsOptions));        // handles all regular requests
+app.options("*", cors(corsOptions)); // ← MUST pass same options, not blank cors());
+
 
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));

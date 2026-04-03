@@ -15,33 +15,27 @@ exports.login = async (req, res) => {
         }
 
         const sql = `
-            SELECT 
-                users.id,
-                users.first_name,
-                users.last_name,
-                users.password,
-                users.status,
-                users.is_super_admin,
-                roles.name AS role,
-                COALESCE(c.dept_id, s.dept_id, st.dept_id) AS dept_id
-            FROM users
-            JOIN roles ON users.role_id = roles.id
-            LEFT JOIN coordinators c ON c.user_id = users.id
-            LEFT JOIN supervisors s ON s.user_id = users.id
-            LEFT JOIN students st ON st.user_id = users.id
-            WHERE users.email = ?
-        `;
+    SELECT 
+        users.id, users.first_name, users.last_name,
+        users.password, users.status, users.is_super_admin,
+        roles.name AS role,
+        COALESCE(c.dept_id, s.dept_id, st.dept_id) AS dept_id
+    FROM users
+    JOIN roles ON users.role_id = roles.id
+    LEFT JOIN coordinators c ON c.user_id = users.id
+    LEFT JOIN supervisors s ON s.user_id = users.id
+    LEFT JOIN students st ON st.user_id = users.id
+    WHERE users.email = $1
+`;
 
-        const results = await db.query(sql, [email]);
-        const rows = results.rows;  // pg uses .rows not results directly
+        const result = await db.query(sql, [email]);
+        const rows = result.rows;
 
-        if (results.length === 0) {
-            return res.status(401).json({
-                message: 'Invalid email or password'
-            });
+        if (rows.length === 0) {
+            return res.status(401).json({ message: 'Invalid email or password' });
         }
 
-        const user = results[0];
+        const user = rows[0];
 
         // block inactive FIRST
         if (user.status === 'inactive') {
