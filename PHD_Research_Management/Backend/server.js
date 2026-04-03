@@ -2,7 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 5000;
-const db = require('./config/db')
+const db = require('./config/db');
+
+const dotenv = require('dotenv');
+const { Pool } = require("pg");
 
 // app.use(cors({
 //   origin: [
@@ -15,6 +18,13 @@ const db = require('./config/db')
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static('uploads')); //serve PDFs
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
 
 //Routes
 app.use('/api/auth', require('./routes/auth'));

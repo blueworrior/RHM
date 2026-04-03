@@ -1,0 +1,108 @@
+const db = require('../config/db');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
+exports.login = async (req, res) => {
+
+    try {
+
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({
+                message: "Email and password required"
+            });
+        }
+
+        const sql = `
+            SELECT 
+                users.id,
+                users.first_name,
+                users.last_name,
+                users.password,
+                users.status,
+                users.is_super_admin,
+                roles.name AS role,
+                COALESCE(c.dept_id, s.dept_id, st.dept_id) AS dept_id
+            FROM users
+            JOIN roles ON users.role_id = roles.id
+            LEFT JOIN coordinators c ON c.user_id = users.id
+            LEFT JOIN supervisors s ON s.user_id = users.id
+            LEFT JOIN students st ON st.user_id = users.id
+            WHERE users.email = ?
+        `;
+
+        const [results] = await db.promise().query(sql, [email]);
+
+        if (results.length === 0) {
+            return res.status(401).json({
+                message: 'Invalid email or password'
+            });
+        }
+
+        const user = results[0];
+
+        // block inactive FIRST
+        if (user.status === 'inactive') {
+            return res.status(403).json({
+                message: "Your account has been deactivated. Please contact administrator."
+            });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+
+        if (!isMatch) {
+            return res.status(401).json({
+                message: 'Invalid email or password'
+            });
+        }
+
+        // ✅ TOKEN WITH SUPER ADMIN
+        const token = jwt.sign(
+            {
+                id: user.id,
+                role: user.role,
+                is_super_admin: !!user.is_super_admin   // converts 1 → true
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: '1d' }
+        );
+
+        res.json({
+            token,
+            user: {
+                id: user.id,
+                first_name: user.first_name,
+                last_name: user.last_name,
+                role: user.role,
+                is_super_admin: !!user.is_super_admin,
+                dept_id: user.dept_id || null   // ✅ now included
+            }
+        });
+
+    } catch (err) {
+
+        console.error(err);
+
+        res.status(500).json({
+            message: "Server Error"
+        });
+    }
+};
+
+// Verify token endpoint
+exports.verifyToken = async (req, res) => {
+    try {
+        // If we reach here, it means the token was valid (authMiddleware verified it)
+        res.json({
+            valid: true,
+            user: {
+                id: req.user.id,
+                role: req.user.role,
+                is_super_admin: req.user.is_super_admin
+            }
+        });
+    } catch (error) {
+        res.status(401).json({ message: 'Invalid token' });
+    }
+};
