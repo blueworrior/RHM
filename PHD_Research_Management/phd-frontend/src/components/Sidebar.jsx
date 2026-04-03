@@ -41,6 +41,7 @@ const Sidebar = () => {
     // Supervisor navigations
     const supervisorNav = [
         { name: 'Dashboard', path: '/supervisor', icon: LayoutDashboard, exact: true },
+        { name: 'Students', path: '/supervisor/students', icon: Users },
         { name: 'Proposals', path: '/supervisor/proposals', icon: FileText },
         { name: 'Progress Reports', path: '/supervisor/progress-reports', icon: TrendingUp },
         { name: 'Publications', path: '/supervisor/publications', icon: BookOpen },

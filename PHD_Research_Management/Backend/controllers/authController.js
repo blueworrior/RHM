@@ -22,9 +22,13 @@ exports.login = async (req, res) => {
                 users.password,
                 users.status,
                 users.is_super_admin,
-                roles.name AS role
+                roles.name AS role,
+                COALESCE(c.dept_id, s.dept_id, st.dept_id) AS dept_id
             FROM users
             JOIN roles ON users.role_id = roles.id
+            LEFT JOIN coordinators c ON c.user_id = users.id
+            LEFT JOIN supervisors s ON s.user_id = users.id
+            LEFT JOIN students st ON st.user_id = users.id
             WHERE users.email = ?
         `;
 
@@ -71,7 +75,8 @@ exports.login = async (req, res) => {
                 first_name: user.first_name,
                 last_name: user.last_name,
                 role: user.role,
-                is_super_admin: !!user.is_super_admin
+                is_super_admin: !!user.is_super_admin,
+                dept_id: user.dept_id || null   // ✅ now included
             }
         });
 
@@ -89,8 +94,8 @@ exports.login = async (req, res) => {
 exports.verifyToken = async (req, res) => {
     try {
         // If we reach here, it means the token was valid (authMiddleware verified it)
-        res.json({ 
-            valid: true, 
+        res.json({
+            valid: true,
             user: {
                 id: req.user.id,
                 role: req.user.role,

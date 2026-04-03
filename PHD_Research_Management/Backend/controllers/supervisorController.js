@@ -240,3 +240,98 @@ exports.decideThesis = async (req, res) => {
         connection.release();
     }
 };
+
+// --- MY STUDENTS ---
+
+// Get all students assigned to this supervisor
+exports.getMyStudents = async (req, res) => {
+    const connection = await db.promise().getConnection();
+    try {
+        const [supervisors] = await connection.query(supsql, [req.user.id]);
+        if (supervisors.length === 0) return res.status(403).json({ message: "Not a Supervisor" });
+
+        const supervisor_id = supervisors[0].id;
+
+        const [rows] = await connection.query(`
+            SELECT
+                st.id AS student_id,
+                u.first_name,
+                u.last_name,
+                u.email,
+                st.registration_no,
+                st.research_area,
+                st.enrollment_date
+            FROM students st
+            JOIN users u ON st.user_id = u.id
+            WHERE st.supervisor_id = ?
+            ORDER BY u.first_name
+        `, [supervisor_id]);
+
+        res.json(rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Server Error" });
+    } finally {
+        connection.release();
+    }
+};
+
+// Get a specific student's full data (proposals, reports, publications, thesis)
+exports.getStudentDetail = async (req, res) => {
+    const connection = await db.promise().getConnection();
+    try {
+        const [supervisors] = await connection.query(supsql, [req.user.id]);
+        if (supervisors.length === 0) return res.status(403).json({ message: "Not a Supervisor" });
+
+        const supervisor_id = supervisors[0].id;
+        const student_id = req.params.id;
+
+        // Verify this student actually belongs to this supervisor
+        const [[student]] = await connection.query(`
+            SELECT st.id, u.first_name, u.last_name, u.email,
+                   st.registration_no, st.research_area, st.enrollment_date
+            FROM students st
+            JOIN users u ON st.user_id = u.id
+            WHERE st.id = ? AND st.supervisor_id = ?
+        `, [student_id, supervisor_id]);
+
+        if (!student) return res.status(403).json({ message: "Student not assigned to you" });
+
+        const [proposals] = await connection.query(`
+            SELECT id AS proposal_id, title, file_path, status, submitted_at
+            FROM proposals WHERE student_id = ?
+            ORDER BY submitted_at DESC
+        `, [student_id]);
+
+        const [reports] = await connection.query(`
+            SELECT id AS report_id, semester, file_path, status, submitted_at
+            FROM progress_reports WHERE student_id = ?
+            ORDER BY submitted_at DESC
+        `, [student_id]);
+
+        const [publications] = await connection.query(`
+            SELECT id AS publication_id, title, journal_name, year, type
+            FROM publications WHERE student_id = ?
+            ORDER BY year DESC
+        `, [student_id]);
+
+        const [thesisRows] = await connection.query(`
+            SELECT id AS thesis_id, title, file_path, status, version, submitted_at
+            FROM thesis WHERE student_id = ?
+        `, [student_id]);
+
+        res.json({
+            student,
+            proposals,
+            reports,
+            publications,
+            thesis: thesisRows[0] || null
+        });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Server Error" });
+    } finally {
+        connection.release();
+    }
+};

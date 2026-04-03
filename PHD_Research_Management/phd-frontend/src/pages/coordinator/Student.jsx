@@ -15,7 +15,7 @@ const CoordinatorStudents = () => {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  
+
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -68,12 +68,17 @@ const CoordinatorStudents = () => {
       // Get coordinator's department
       const userStr = localStorage.getItem('user');
       const user = JSON.parse(userStr);
-      
+
+      if (!user.dept_id) {
+        setError('Could not determine your department. Please log out and log in again.');
+        return;
+      }
+
       await api.post('/api/coordinator/students', {
         ...formData,
-        dept_id: user.dept_id || 1 // You'll need to store dept_id in user data
+        dept_id: user.dept_id
       });
-      
+
       setSuccess('Student created successfully');
       setFormData({
         first_name: '',
@@ -179,8 +184,8 @@ const CoordinatorStudents = () => {
     setIsAssignModalOpen(true);
   };
 
-  const passwordsMatch = formData.password && formData.confirmPassword && 
-                         formData.password === formData.confirmPassword;
+  const passwordsMatch = formData.password && formData.confirmPassword &&
+    formData.password === formData.confirmPassword;
 
   if (loading) return <Loading />;
 
@@ -304,8 +309,8 @@ const CoordinatorStudents = () => {
                     )}
                   </td>
                   <td>
-                    {student.enrollment_date 
-                      ? new Date(student.enrollment_date).toLocaleDateString() 
+                    {student.enrollment_date
+                      ? new Date(student.enrollment_date).toLocaleDateString()
                       : '-'}
                   </td>
                   <td>
@@ -355,14 +360,14 @@ const CoordinatorStudents = () => {
       >
         <form onSubmit={handleCreate}>
           {error && <div className="error-message">{error}</div>}
-          
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div className="input-group">
               <label>First Name *</label>
               <input
                 type="text"
                 value={formData.first_name}
-                onChange={(e) => setFormData({...formData, first_name: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
                 required
               />
             </div>
@@ -372,7 +377,7 @@ const CoordinatorStudents = () => {
               <input
                 type="text"
                 value={formData.last_name}
-                onChange={(e) => setFormData({...formData, last_name: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
                 required
               />
             </div>
@@ -383,7 +388,7 @@ const CoordinatorStudents = () => {
             <input
               type="email"
               value={formData.email}
-              onChange={(e) => setFormData({...formData, email: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               required
             />
           </div>
@@ -393,7 +398,7 @@ const CoordinatorStudents = () => {
             <input
               type="password"
               value={formData.password}
-              onChange={(e) => setFormData({...formData, password: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               required
               minLength={6}
             />
@@ -404,13 +409,13 @@ const CoordinatorStudents = () => {
             <input
               type="password"
               value={formData.confirmPassword}
-              onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
               required
               minLength={6}
               placeholder="Re-enter password"
               style={{
-                borderColor: formData.confirmPassword 
-                  ? (passwordsMatch ? 'var(--success)' : 'var(--error)') 
+                borderColor: formData.confirmPassword
+                  ? (passwordsMatch ? 'var(--success)' : 'var(--error)')
                   : 'var(--border)'
               }}
             />
@@ -426,7 +431,7 @@ const CoordinatorStudents = () => {
             <input
               type="text"
               value={formData.registration_no}
-              onChange={(e) => setFormData({...formData, registration_no: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, registration_no: e.target.value })}
               placeholder="e.g., 2024-CS-001"
               required
             />
@@ -437,7 +442,7 @@ const CoordinatorStudents = () => {
             <input
               type="text"
               value={formData.research_area}
-              onChange={(e) => setFormData({...formData, research_area: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, research_area: e.target.value })}
               placeholder="e.g., Machine Learning"
               required
             />
@@ -448,7 +453,7 @@ const CoordinatorStudents = () => {
             <input
               type="date"
               value={formData.enrollment_date}
-              onChange={(e) => setFormData({...formData, enrollment_date: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, enrollment_date: e.target.value })}
               required
             />
           </div>
@@ -476,13 +481,13 @@ const CoordinatorStudents = () => {
       >
         <form onSubmit={handleUpdate}>
           {error && <div className="error-message">{error}</div>}
-          
+
           <div className="input-group">
             <label>Registration Number *</label>
             <input
               type="text"
               value={formData.registration_no}
-              onChange={(e) => setFormData({...formData, registration_no: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, registration_no: e.target.value })}
               required
             />
           </div>
@@ -492,7 +497,7 @@ const CoordinatorStudents = () => {
             <input
               type="text"
               value={formData.research_area}
-              onChange={(e) => setFormData({...formData, research_area: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, research_area: e.target.value })}
               required
             />
           </div>
@@ -521,7 +526,7 @@ const CoordinatorStudents = () => {
       >
         <form onSubmit={handleAssignSupervisor}>
           {error && <div className="error-message">{error}</div>}
-          
+
           <p style={{ marginBottom: '20px', color: 'var(--text-secondary)' }}>
             Assigning supervisor for: <strong>{selectedStudent?.first_name} {selectedStudent?.last_name}</strong>
           </p>
@@ -530,7 +535,7 @@ const CoordinatorStudents = () => {
             <label>Select Supervisor *</label>
             <select
               value={assignData.supervisor_id}
-              onChange={(e) => setAssignData({...assignData, supervisor_id: e.target.value})}
+              onChange={(e) => setAssignData({ ...assignData, supervisor_id: e.target.value })}
               required
             >
               <option value="">Choose a supervisor</option>

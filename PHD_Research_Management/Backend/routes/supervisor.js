@@ -29,4 +29,8 @@ router.get('/thesis', auth, role(['supervisor']), supervisorProposal.getMyStuden
 // -> 2. Approve/ Reject thesis
 router.put('/thesis/:id/decision', auth, role(['supervisor']), supervisorProposal.decideThesis);
 
+// Students
+router.get('/my-students', auth, role(['supervisor']), supervisorProposal.getMyStudents);
+router.get('/my-students/:id', auth, role(['supervisor']), supervisorProposal.getStudentDetail);
+
 module.exports = router;

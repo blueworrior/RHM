@@ -26,6 +26,8 @@ import CoordinatorThesis from './pages/coordinator/Thesis';
 
 // Supervisor Pages
 import SupervisorDashboard from './pages/supervisor/Dashboard';
+import SupervisorStudents from './pages/supervisor/Student';
+import SupervisorStudentDetail from './pages/supervisor/StudentDetail';
 import SupervisorProposals from './pages/supervisor/Proposals';
 import SupervisorProgressReports from './pages/supervisor/ProgressReports';
 import SupervisorPublications from './pages/supervisor/Publications';
@@ -101,6 +103,8 @@ function AppRoutes() {
         <Route path="/supervisor/progress-reports" element={<ProtectedRoute role="supervisor"><SupervisorProgressReports /></ProtectedRoute>} />
         <Route path="/supervisor/publications" element={<ProtectedRoute role="supervisor"><SupervisorPublications /></ProtectedRoute>} />
         <Route path="/supervisor/thesis" element={<ProtectedRoute role="supervisor"><SupervisorThesis /></ProtectedRoute>} />
+        <Route path="/supervisor/students" element={<ProtectedRoute role="supervisor"><SupervisorStudents /></ProtectedRoute>} />
+<Route path="/supervisor/students/:id" element={<ProtectedRoute role="supervisor"><SupervisorStudentDetail /></ProtectedRoute>} />
 
 
         {/* Student Routes */}
